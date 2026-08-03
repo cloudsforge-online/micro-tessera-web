@@ -38,8 +38,33 @@ export const WEI_PER_EMBER = 1_000_000_000_000_000_000n
 
 export class AmountError extends RangeError {
   constructor(what: string, value: unknown) {
-    super(`${what} is not a decimal amount: ${JSON.stringify(value)}`)
+    super(`${what} is not a decimal amount: ${describe(value)}`)
     this.name = 'AmountError'
+  }
+}
+
+/**
+ * A value, safely, for an error message.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * `JSON.stringify(1n)` THROWS `TypeError: Do not know how to serialize a BigInt`.
+ *
+ * This constructor used to call `JSON.stringify` directly, and `test/money.test.ts` caught it by
+ * passing a `bigint` among the values `parseAmount` must refuse. A `bigint` is exactly what a
+ * caller who has already parsed an amount once would pass by mistake — so the failure mode was:
+ * the guard against a silent zero raises a DIFFERENT error, from inside its own error path, and
+ * whatever the caller was told is not that the amount was malformed.
+ *
+ * An error message that can throw is worse than no error message, because it replaces a
+ * diagnosable failure with an undiagnosable one at the exact moment something is already wrong.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+function describe(value: unknown): string {
+  if (typeof value === 'bigint') return `${value}n`
+  try {
+    return JSON.stringify(value) ?? String(value)
+  } catch {
+    return Object.prototype.toString.call(value)
   }
 }
 

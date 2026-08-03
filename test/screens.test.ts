@@ -17,7 +17,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createElement as h } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { withScreen, type Routes } from './dom.ts'
+import { mount, withScreen, type Routes } from './dom.ts'
 import { DiscoverPage } from '../src/pages/discover.tsx'
 import { KilnPage } from '../src/pages/kiln.tsx'
 import { LandPage } from '../src/pages/land.tsx'
@@ -30,6 +30,43 @@ import { LISTING, OBJECT, PARCEL, RANKED, SIGNED_IN, TERMS, WARD } from './fixtu
 const routed = (element: ReturnType<typeof h>) => h(MemoryRouter, null, element)
 
 const SESSION = { storage: { ...SIGNED_IN } } as const
+
+/* ── the guard every other test in this file rests on ──────────────────────────────────────── */
+
+test('a screen that renders nothing is REFUSED, not returned', async () => {
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  // THIS TEST EXISTS BECAUSE `test/red.sh` FOUND IT MISSING.
+  //
+  // Loosening `assertMounted`'s 40-character floor to `>= 0` left the whole suite green: every
+  // screen below happens to render plenty, so nothing depended on the floor being enforced. A
+  // guard that no test can detect the removal of is a guard that will be removed by somebody
+  // tidying up, and the first thing to slip past it will be a bundle that 404s — which leaves
+  // the network perfectly idle while `domcontentloaded` fires anyway.
+  //
+  // So the floor is now driven directly: an empty render must THROW.
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  const Blank = () => null
+  await assert.rejects(
+    () => mount(h(Blank), { routes: {} }),
+    /nothing mounted/,
+    'a component that rendered nothing was handed back as a screen',
+  )
+
+  // And a short-but-not-empty render is refused too, which is the case that actually happens: an
+  // error boundary rendering "Something went wrong" is 20 characters and looks like a page.
+  const Nearly = () => h('p', null, 'Something went wrong')
+  await assert.rejects(
+    () => mount(h(Nearly), { routes: {} }),
+    /nothing mounted/,
+    'a 20-character error screen passed as a mounted application',
+  )
+
+  // The converse, so this is not passing because `mount` throws on everything: 41 characters is
+  // enough.
+  const Enough = () => h('p', null, 'x'.repeat(41))
+  const screen = await mount(h(Enough), { routes: {} })
+  await screen.unmount()
+})
 
 /* ── the wards page ────────────────────────────────────────────────────────────────────────── */
 
