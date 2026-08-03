@@ -155,6 +155,23 @@ mutate 'every tier is offered' src/pages/land.tsx \
   "{ tier: 'homestead', label: 'Homestead — 16×16', note: 'One per account, free, never fallow, never tradeable.' }," \
   ''
 
+# 16. DRAW_BUDGET must follow from the measured cost per draw, not from taste.
+mutate 'DRAW_BUDGET follows the measurement' src/render/renderer.ts \
+  'export const DRAW_BUDGET = 2000' \
+  'export const DRAW_BUDGET = 6000'
+
+# 17. The zoom floor must not degrade a fitted Plot. This is the value the measurement corrected,
+#     and it was wrong by 1.2%.
+mutate 'the zoom floor does not degrade a fitted Plot' src/render/renderer.ts \
+  'export const SPRITE_MIN_ZOOM = 0.17' \
+  'export const SPRITE_MIN_ZOOM = 0.18'
+
+# 18. The recorded numbers must have come from a GPU. Headless Chromium rasterises on the CPU by
+#     default and reported 200us per draw before the flags were added.
+mutate 'the recorded run used a GPU' docs/render-budget.json \
+  '"softwareRaster": false' \
+  '"softwareRaster": true'
+
 echo
 printf 'guards proven red: %d   guards that stayed green: %d\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1
