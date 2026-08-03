@@ -38,22 +38,40 @@
     -->
     <meta name="cf-release" content="dev" />
     <!--
-      NO <link rel="icon"> AND NO og:image, AND THAT IS THE HONEST STATE RATHER THAN AN OVERSIGHT.
+      TESSERA'S OWN CHROME, AND NOBODY ELSE'S.
 
-      Tessera's chrome is set 14 of docs/ecosystem/23-tessera.md §2.14 — `chrome/mark` generated,
-      then favicon-32/192/512, apple-touch-180 and og-title DERIVED from it — and
-      micro-tessera-assets is generating it in a sibling working tree as this is written. There is
-      no file to point at.
+      This block used to say there was nothing to point at, and it was right at the time: set 14 of
+      docs/ecosystem/23-tessera.md §2.14 was still generating in a sibling working tree. It has
+      landed. `chrome/mark` (1024×1024, generated) and, derived from it, `favicon-32`,
+      `favicon-192`, `favicon-512`, `apple-touch-180` and `og-title`. The five files below are
+      BYTE-IDENTICAL copies of those, taken from `micro-tessera-assets/assets/chrome/` and checked
+      against that repository's MANIFEST.json sha256 before they were committed.
 
-      The alternative was to copy the estate's generic chrome in and let a brand test pass against
-      it. Three frontends in this estate shipped images with no favicon while their own brand tests
-      went green against a source tree that had one; the failure mode of a PLACEHOLDER is that
-      nobody ever notices it is still there. A missing tag is visible in one glance at the tab.
+      The alternative — copying the estate's generic company chrome in so a brand test would go
+      green — was refused then and is worth restating now that there is no longer any reason to
+      reach for it. Three frontends in this estate shipped images with no favicon while their own
+      brand tests passed against a source tree that had one; the failure mode of a PLACEHOLDER is
+      that nobody ever notices it is still there.
 
-      `test/brand-chrome.test.ts` holds the gate: it fails the moment a file lands in public/
-      without the tags being added, and it fails if a tag is added without the file. It is a
-      two-way check on purpose — the one-way version is how a placeholder ships.
+      APPLE-TOUCH IS THE REAL 180, not an alias of the 192. Every other frontend here points
+      `apple-touch-icon` at `/favicon-192x192.png` because 180 was never generated for them. It was
+      generated for this title, so pointing at it costs nothing and stops iOS resampling.
+
+      THE OG CARD IS `chrome/og-title`, NOT `keyart/og-1200x630`, and both exist. The keyart card
+      is a scene from the world and would draw a better click; the chrome card is the mark trimmed
+      to its ink and centred on the flat #12100f ground. Set 14 is what §2.14 calls "title chrome"
+      and its manifest note says it was sized at 1200×630 because that is "the size a scraper
+      rejects anything else for" — it was built to be this tag. The scene card belongs to whoever
+      markets the title, which is not this bundle.
+
+      `test/brand-chrome.test.ts` holds the gate, in BOTH directions: every icon shipped is linked,
+      every icon linked is shipped, and every file's sha256 is pinned to what micro-tessera-assets
+      recorded — so swapping a placeholder in is a failure rather than a quiet success.
     -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512x512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
 
     <title>Tessera</title>
 
@@ -65,6 +83,7 @@
       property="og:description"
       content="A world people make. Claim ground for free, fire an object out of a prompt, open a place. A Forge Worlds title."
     />
+    <meta property="og:image" content="/og-1200x630.png" />
   </head>
   <body>
     <div id="root"></div>

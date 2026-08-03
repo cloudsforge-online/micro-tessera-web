@@ -31,9 +31,12 @@
  *   - A dash with no explanation, which reads as "you have none" to everyone who does not know
  *     the route is missing.
  *
- * So it says which figure is missing and why, and `test/wallet-strip.test.ts` asserts that no
- * digit appears in the strip while the route is absent — an absence asserted with force, the way
- * `admin-web` asserts its missing og card.
+ * So it says which figure is missing and why, and two tests in `test/screens.test.ts` hold it:
+ * "the wallet strip prints no digit while the balance route does not exist" (line 362) asserts the
+ * absence with force, the way `admin-web` asserts its missing og card, and "a real zero balance
+ * reads as zero, and an absent one does not" (line 390) asserts the distinction the `wei === null`
+ * check below exists for. This comment used to cite `test/wallet-strip.test.ts`, which has never
+ * existed — a citation that read as verification and pointed at nothing.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import { MISSING_ROUTES } from '../lib/tessera.ts'
