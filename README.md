@@ -11,11 +11,11 @@ three-figure wallet strip.
 ```
 pnpm install          # @cloudsforge/ui is link:../ui/packages/ui — the sibling must be checked out
 pnpm dev              # vite 5172
-pnpm test             # node:test, 53 tests
+pnpm test             # node:test, 101 tests
 pnpm typecheck
 pnpm build
 pnpm measure          # drives a real Chromium; writes docs/render-budget.json. Minutes, not seconds.
-bash test/red.sh      # breaks all 18 guards in turn and requires each to go red
+bash test/red.sh      # breaks all 50 guards in turn and requires each to go red
 ```
 
 ---
@@ -111,8 +111,37 @@ and name. `mount()` **refuses to return a screen whose body is under 40 characte
 that 404s leaves the network perfectly idle and `domcontentloaded` fires anyway, so a smoke test
 passes against a blank page.
 
+### The browser-journey catalogue
+
+`test/journeys.ts` is this surface's slice of `docs/ecosystem/22-browser-journeys.md` **as data**,
+and `test/journeys.test.ts` runs it. **Doc 22 predates Tessera entirely** — it enumerates fifteen
+bundles and this is not one of them, and its adversarial matrix stops at `BJ-ADV-21` — so the ids
+are *allocated here* rather than transcribed, which `journeys.ts` states along with what should
+happen to them when doc 22 is next revised.
+
+**38 scenarios run; 10 are recorded as blocked, with the reason.** Seven of those ten carry a
+`blockedWhile` anchor — a `<repo>/<path>#<string>` a meta-test resolves — because a blocker is a
+claim about the estate written at one moment and a claim nothing checks is a claim that rots. When
+the terrain route lands, or a build tool starts calling `placeObjects`, or `micro-ui` installs
+axe-core, the blocker goes **stale and red** and names the scenario that is now writable. Without
+that, a gap that has quietly closed reads exactly like a gap that is still open.
+
+Four meta-tests hold the catalogue together, and a fifth proves *they* can fail: a scenario whose
+outcome turns on a server rule must name the test that owns it (doc 22 §3.2); every `ownedBy` that
+can be resolved must resolve; **every screen must carry at least one scenario that runs**; and a
+scenario cannot be declared, counted and never written.
+
+### Proving the tests can fail
+
 `bash test/red.sh` applies one real defect at a time, runs the whole suite, requires a failure and
-restores the file. **26 guards: 25 proven red beside a scratch checkout, 1 proven red by hand.**
+restores the file. **50 guards, 50 proven red, none stayed green.**
+
+Three of those fifty put back a defect this suite *found* rather than a property it confirmed. All
+three commit forms — fire an object, list one, claim ground — guarded themselves with `if (busy)
+return` and `disabled={busy}`, and neither can see a second click in the same tick: `busy` is read
+out of the render closure, `setBusy(true)` only schedules a render, and `disabled` is not on the
+button until that render commits. Two clicks produced **two firings, two listings and two claims**.
+A firing has a real marginal cost in USD at the provider. The latch is a ref now.
 
 It **refuses to start unless the baseline is green**, which it did not do at first and which made
 it briefly worthless. `mutate` reads a non-zero exit as proof the guard caught the mutation — so
@@ -150,8 +179,10 @@ Actions is billing-blocked across the org: jobs fail in 3–16 seconds with zero
 So every job was reproduced by hand instead, against **fresh clones in a scratch directory** with
 only this repository and micro-ui present — which is exactly what web-ci.yml checks out:
 
-* **build** — install sibling, install, typecheck, test (67 tests, 64 pass, **3 skipped** because
-  `../tessera` and `../tessera-assets` are absent, 0 fail), build, `dist/index.html` exists.
+* **build** — install sibling, install, typecheck, test, build, `dist/index.html` exists. Beside
+  the estate the suite is **101 tests, 101 pass**; in a scratch checkout the assertions that read
+  `../tessera` and `../tessera-assets` **skip** rather than pass, which is worth knowing about
+  rather than being reassured by.
 * **runtime-hosts** — all four checks run verbatim. The first one **failed**, on test fixtures that
   spelled out `import.meta.env.VITE_…` in order to prove the local scanner can fail. The expression
   is assembled now; reading the workflow would not have found that.
@@ -164,12 +195,24 @@ What was **not** verified: that GitHub resolves `micro-org/.github/workflows/web
 `type=gha` layer cache behave. None of those can be exercised locally, and none of them are green
 until somebody sees a run.
 
-### The suite is red beside the estate, and that is the mechanism working
+### The suite went red beside the estate twice, and both times that was the mechanism working
 
-`GET /v1/me/balances` **now exists** in `micro-tessera` (`src/server.ts:872`, answering 503 with no
-figures rather than a zero). `MISSING_ROUTES` records it as absent and `citations.test.ts` asserts
-those routes are *still* absent — so that test fails whenever `../tessera` is checked out beside
-this repository, with the message *"wire it up and delete this entry from MISSING_ROUTES"*. That is
-what the test is for and it should not be deleted; the wallet strip has not been wired to the route
-yet. In CI the sibling is absent, so the assertion **skips** and the run is green — which is worth
-knowing about rather than being reassured by.
+**`GET /v1/me/balances` landed.** `MISSING_ROUTES` recorded it as absent and `citations.test.ts`
+asserts those routes are *still* absent, so the suite failed whenever `../tessera` was checked out
+beside this repository, with the message *"wire it up and delete this entry from MISSING_ROUTES"*.
+The fix was the wiring, not the deletion: the strip now calls the route, an anchor pins it, and the
+test asserts from **both sides** that it is served *and* called — so removing the entry alone
+cannot pass. The refusal the strip was built around is unchanged and is now reached by a different
+road: the service answers **503 with no figures rather than a zero**, so an empty strip is still a
+correct strip. `Confirming` stays unavailable even on a fully successful read, because it is not a
+ledger balance and never may be.
+
+**`micro-tessera-assets` regenerated its chrome set**, so the five sha256s `brand-chrome.test.ts`
+pins against its `MANIFEST.json` all moved. Same shape, different sibling: an assertion whose other
+side is a repository somebody else is working in will go red without this one changing at all. The
+files were re-copied and the digests re-pinned *from the manifest*, never from the bytes that
+happened to be sitting in `public/`.
+
+`MISSING_ROUTES` still records **three** routes as absent — ward terrain or a `seed`, a sprite path
+on `WorldObject`, and a route for the 96 seed objects. Those tests go red the day the routes land.
+**That is the mechanism; do not delete them.**

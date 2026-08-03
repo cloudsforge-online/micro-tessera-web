@@ -32,14 +32,23 @@ fail=0
 #
 # `mutate` applies a defect and requires `pnpm test` to FAIL. It reads a non-zero exit as proof
 # that the guard caught the mutation. If the suite is ALREADY failing for some unrelated reason,
-# every mutation "proves red" without any of them being caught by anything — twenty-six guards
-# reported as working, on the strength of one failure that none of them caused.
+# every mutation "proves red" without any of them being caught by anything — fifty guards reported
+# as working, on the strength of one failure that none of them caused.
 #
-# That is not hypothetical here. `citations.test.ts` asserts three routes are still ABSENT from
-# micro-tessera and goes red the day one lands — which is the mechanism working, and is exactly the
-# state this repository is in: `GET /v1/me/balances` now exists (tessera/src/server.ts:872), so the
-# suite is red whenever `../tessera` is checked out beside this repository. Running this script
-# there would have printed "26 guards proven red" and meant nothing.
+# That is not hypothetical here, and it has now happened twice.
+#
+#   - `citations.test.ts` asserts that routes recorded in MISSING_ROUTES are still ABSENT from
+#     micro-tessera, and goes red the day one lands. `GET /v1/me/balances` landed, and the suite
+#     was red whenever `../tessera` was checked out beside this repository. Running this script
+#     there would have printed "26 guards proven red" and meant nothing. The fix was to WIRE THE
+#     ROUTE UP, which is what the red was for.
+#   - `brand-chrome.test.ts` pins five `public/` files against micro-tessera-assets' MANIFEST.json,
+#     and that repository regenerated its chrome set. Same shape, different sibling: an assertion
+#     whose other side is a repo somebody else is working in will go red without this repository
+#     changing at all.
+#
+# Both are the mechanism working. Neither is a reason to relax the check, and both are reasons the
+# baseline gate below has to exist.
 #
 # So: refuse to start unless the suite is green. It is the same shape as every other rule in this
 # file — a check that cannot distinguish success from failure is worse than no check, because
@@ -292,6 +301,166 @@ env_read="import.meta.env.""VITE_ASSET_BASE"
 mutate 'no source file reads a build-time environment variable' src/lib/hosts.ts \
   'return `${pageOrigin()}/world-assets`' \
   "return ${env_read} ?? \`\${pageOrigin()}/world-assets\`"
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# THE BROWSER-JOURNEY GUARDS (test/journeys.ts, test/journeys.test.ts).
+#
+# Everything above this line predates the journey catalogue. The mutations below are one per NEW
+# guard family, and several of them exist because the scenario that produced them found a defect
+# rather than confirmed a property — 39, 40 and 41 in particular put back the exact code the
+# double-submit hazard was measured against.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+# 27. The world opens FITTED to the parcel. This is the half `render-budget.test.ts` cannot see:
+#     it holds SPRITE_MIN_ZOOM to the measured Plot fit, and nothing held that measurement to the
+#     fact that a parcel is opened at the zoom it fits at. Change the initial camera and the
+#     constant still satisfies its measurement while every Plot renders as bare ground.
+mutate 'the world opens fitted to the parcel' src/components/world-canvas.tsx \
+  'zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomToFit(side, { width, height }))),' \
+  'zoom: 0.05,'
+
+# 28. A sprite that will not load is a hole with a NAME. Silencing the list turns a loud failure
+#     into a world that quietly renders wrong.
+mutate 'an unresolvable sprite is named' src/components/world-canvas.tsx \
+  'setMissing(sprites.missing)' \
+  'setMissing([])'
+
+# 29. The object cap is DISPLAYED from the response and never derived. Five per eight tiles is the
+#     rule today; a client that computed it keeps printing the old one after the schema moves.
+mutate 'the object cap is the response, not five per eight tiles' src/pages/world.tsx \
+  '{parcel.objectCap.toLocaleString()}' \
+  '{((parcel.tiles / 8) * 5).toLocaleString()}'
+
+# 30. Occupancy is the service's figure. 70% mints the next ward, so a client doing that division
+#     itself disagrees with the service about when the world grows.
+mutate 'occupancy is the service figure' src/pages/wards.tsx \
+  'const percent = Math.round(ward.occupancy * 100)' \
+  'const percent = Math.round((ward.claimedTiles / ward.claimableTiles) * 100)'
+
+# 31. A fallow state this build has never heard of must render as ITSELF. Falling through to the
+#     friendliest sentence in the table tells somebody their land is Live on the day it is not.
+mutate 'an unknown fallow state is not mapped onto the default' src/pages/land.tsx \
+  '{FALLOW_COPY[parcel.fallowState] ?? parcel.fallowState}' \
+  "{FALLOW_COPY[parcel.fallowState] ?? FALLOW_COPY['live']}"
+
+# 32. The gate control sends the negation of the state the SERVICE reported.
+mutate 'the gate sends the negation of the served state' src/pages/land.tsx \
+  '() => setParcelFlags(parcel.id, { gateOpen: !parcel.gateOpen }),' \
+  '() => setParcelFlags(parcel.id, { gateOpen: true }),'
+
+# 33. The client follows the job to a TERMINAL state. A 202 is an enqueue: studio answers it before
+#     touching a model, so a client that stops following has told the user nothing.
+mutate 'the Kiln polls until the job is terminal' src/pages/kiln.tsx \
+  'timer = setTimeout(tick, 2000)' \
+  'timer = setTimeout(tick, 200000)'
+
+# 34. And it STOPS at one. A poll with no terminal condition is a tab making a request every two
+#     seconds overnight against a job that is never going to answer differently.
+mutate 'the Kiln stops polling a terminal object' src/pages/kiln.tsx \
+  "if (res.object.status === 'firing') {" \
+  "if (res.object.status !== 'nonexistent-state') {"
+
+# 35. The feed renders in the SERVICE'S order. Re-sorting by a column the client can see makes the
+#     score stop explaining the order, which is the whole thing this screen exists to make checkable.
+mutate 'the feed is not re-ordered by this client' src/pages/discover.tsx \
+  '{feed.data.parcels.map((row) => (' \
+  '{[...feed.data.parcels].sort((a, b) => b.inputs.footfall - a.inputs.footfall).map((row) => ('
+
+# 36. BOTH ranking inputs, on the row with the score. Dwell is the one that punishes a doorway
+#     which tricks people in, so losing it is losing half the fairness argument.
+mutate 'both ranking inputs are shown beside the score' src/pages/discover.tsx \
+  '<td>{row.inputs.medianDwell}s</td>' \
+  '<td>—</td>'
+
+# 37. The split is the SERVICE'S arithmetic. A client that multiplied the price by the basis points
+#     beside it would print a partition that agreed with itself while the real one differed.
+mutate 'the split is printed, not recomputed' src/pages/workshop.tsx \
+  "{formatSparks(parseAmount(listing.split.feeWei, 'feeWei'))}" \
+  "{formatSparks((parseAmount(listing.priceWei, 'priceWei') * BigInt(listing.platformFeeBps)) / 10000n)}"
+
+# 38. The royalty input offers the WIRE's range. Clamping to the cap is the client asserting the
+#     rule — and a test of the clamp passes against a service that stopped enforcing it.
+mutate 'the royalty input is the wire range, not the cap' src/pages/workshop.tsx \
+  'max={10000}' \
+  'max={maxRoyaltyBps ?? 10000}'
+
+# 39. THE DEFECT THIS SUITE FOUND, put back. `busy` is read out of the render closure and
+#     `setBusy(true)` only schedules a render, so two clicks in one tick both pass. Measured at two
+#     firings — and a firing has a real marginal cost in USD at the provider.
+mutate 'the Kiln latches in flight on a ref, not on state' src/pages/kiln.tsx \
+  'if (inFlight.current) return' \
+  'if (busy) return'
+
+# 40. The same defect on the listing form. Measured at two listings, which is two live buyable
+#     offers of a thing the seller meant to sell once.
+mutate 'the listing form latches in flight on a ref' src/pages/workshop.tsx \
+  'if (inFlight.current) return' \
+  'if (busy) return'
+
+# 41. And on the claim form. Two claims race for the same rectangle and the loser produces a
+#     refusal the user did not ask for.
+mutate 'the claim form latches in flight on a ref' src/pages/land.tsx \
+  'if (inFlight.current) return' \
+  'if (busy) return'
+
+# 42. The not-found screen offers EVERY declared route. A screen that is one short is a route
+#     nobody can reach from the only page that lists them all.
+mutate 'the 404 screen offers every declared route' src/pages/not-found.tsx \
+  '{ROUTES.map((route) => (' \
+  '{ROUTES.slice(1).map((route) => ('
+
+# 43. The skip link points at the main landmark. One that points at nothing is a control a keyboard
+#     reader activates and cannot tell whether anything happened.
+mutate 'the skip link points at the main landmark' src/components/shell.tsx \
+  'href="#main"' \
+  'href="#top"'
+
+# 44. The gate state is in the ACCESSIBLE NAME, not only in a visual badge. Colour is never the
+#     only channel, and on this world the gate decides whether you can walk in.
+#     ANSI-C quoting, as mutation 8 uses and for the same reason: the target contains single
+#     quotes, and a plain single-quoted pattern cannot express them. A mutation that cannot express
+#     its target is indistinguishable from a guard that does not work.
+mutate 'the gate state is in the accessible name' src/pages/world.tsx \
+  $'? \'open\' : \'shut\'}`}' \
+  $'? \'\' : \'\'}`}'
+
+# 45. A balance the strip does not have must not become a zero on the way to the screen. The route
+#     answers 503 with no figures precisely so this client never has to guess.
+mutate 'an unanswered balance does not become a zero' src/components/wallet-strip.tsx \
+  '      : undefined)' \
+  '      : { availableWei: 0n, clearingWei: 0n, confirming: null })'
+
+# 46. The strip asks for nobody in particular. A subject parameter here is somebody else's
+#     earnings on your screen.
+mutate 'the balance read carries no subject' src/lib/tessera.ts \
+  "tessera('/v1/me/balances')" \
+  "tessera('/v1/me/balances', { query: { subject: 'user:alice' } })"
+
+# 47. The catalogue's own layer boundary: a scenario turning on a server rule must name the test
+#     that owns it. Doc 22 §3.2 makes this a build failure rather than advice.
+mutate 'a scenario naming a server rule must name its owner' test/journeys.ts \
+  "    ownedBy: 'market/src/money.ts#assertPartition'," \
+  ''
+
+# 48. A blocker is a claim about the estate, and a claim nothing checks is a claim that rots. This
+#     rewrites one anchor to something that IS present, which must be reported as a gap that has
+#     closed rather than passing as a gap that is open.
+mutate 'a blocker that has gone stale is caught' test/journeys.ts \
+  "blockedWhile: { absent: 'tessera-web/src/lib/tessera.ts#EventSource' }," \
+  "blockedWhile: { absent: 'tessera-web/src/lib/tessera.ts#export interface Ward' },"
+
+# 49. A scenario cannot be declared, counted and never written. Without this the catalogue is a
+#     list rather than coverage.
+mutate 'a declared scenario must have a test' test/journeys.test.ts \
+  'BJ-TES-19 [T1/presentation] every row carries both ranking inputs' \
+  'BJ-TES-XX [T1/presentation] every row carries both ranking inputs'
+
+# 50. Every screen carries at least one scenario that runs. This is the measured gap turned into a
+#     floor: a screen with none is a screen whose whole behaviour can change with the suite green.
+mutate 'every screen carries a scenario that runs' test/journeys.ts \
+  "  'not-found'," \
+  "  'not-found',
+  'ledger',"
 
 echo
 printf 'guards proven red: %d   guards that stayed green: %d   not proven here: %d\n' \
