@@ -58,9 +58,34 @@ fi
 echo "baseline: green. Every failure below is therefore attributable to its mutation."
 echo
 
-# mutate <label> <file> <python-expression-replacing-source>
+skipped=0
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# A GUARD THAT CANNOT RUN IS NOT A GUARD THAT DOES NOT WORK, and this script could not tell the
+# difference until it reported one.
+#
+# Run in a scratch directory with only this repository and micro-ui cloned — which is exactly what
+# web-ci.yml checks out, and therefore the shape of every CI run — mutation 8 was reported as "THE
+# SUITE STAYED GREEN. This guard does not guard." It guards. `citations.test.ts` reads
+# `../tessera/src/server.ts`, correctly SKIPS when that sibling is absent, and a skipped test
+# cannot catch anything. Applying the same mutation where micro-tessera is checked out fails it
+# immediately, with `cite: nothing in .../server.ts matches "define('GET', '/v1/discover/promoted'"`
+# — which is the whole /auth/exchange guard doing its job.
+#
+# This is the same class of confusion the header already documents for a mutation that misses its
+# target: an unhelpful report is worse than no report, because somebody acts on it. The third
+# outcome now has its own name and its own count, and `needs` says which sibling makes it real.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+# mutate <label> <file> <find> <replace> [sibling-required]
 mutate() {
-  local label="$1" file="$2" find="$3" replace="$4"
+  local label="$1" file="$2" find="$3" replace="$4" needs="${5:-}"
+  if [ -n "$needs" ] && [ ! -d "../$needs" ]; then
+    printf '  -- %s — NOT PROVEN: ../%s is not checked out, so the guard is skipped rather than run\n' \
+      "$label" "$needs"
+    skipped=$((skipped + 1))
+    return
+  fi
   cp "$file" "$file.red-backup"
   python3 - "$file" "$find" "$replace" <<'PY'
 import sys
@@ -145,9 +170,14 @@ mutate '/world-assets 404s a missing sprite' nginx.conf \
 #     actually happened was that the mutation missed. A mutation that cannot express its target is
 #     indistinguishable from a guard that does not work, which is why the script prints the two
 #     outcomes differently.
+#
+#     `tessera` is declared as REQUIRED: the assertion reads ../tessera/src/server.ts and skips
+#     without it, and a skipped test catches nothing. Reported as not proven rather than as a
+#     broken guard — see the note on `mutate`.
 mutate 'a route this client calls must exist in the service' src/lib/tessera.ts \
   $'"define(\'GET\', \'/v1/discover\'"' \
-  $'"define(\'GET\', \'/v1/discover/promoted\'"'
+  $'"define(\'GET\', \'/v1/discover/promoted\'"' \
+  tessera
 
 # 9. No file in the bundle may name an asset provider.
 mutate 'no source file names an asset provider' src/lib/sprites.ts \
@@ -264,5 +294,12 @@ mutate 'no source file reads a build-time environment variable' src/lib/hosts.ts
   "return ${env_read} ?? \`\${pageOrigin()}/world-assets\`"
 
 echo
-printf 'guards proven red: %d   guards that stayed green: %d\n' "$pass" "$fail"
+printf 'guards proven red: %d   guards that stayed green: %d   not proven here: %d\n' \
+  "$pass" "$fail" "$skipped"
+if [ "$skipped" -gt 0 ]; then
+  echo
+  echo "A guard reported as NOT PROVEN was not exercised: the sibling repository its assertion"
+  echo "reads is not checked out, so the test skipped and the mutation had nothing to catch it."
+  echo "That is not a passing guard. Re-run beside the estate to prove those."
+fi
 [ "$fail" -eq 0 ] || exit 1

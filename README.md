@@ -112,14 +112,64 @@ that 404s leaves the network perfectly idle and `domcontentloaded` fires anyway,
 passes against a blank page.
 
 `bash test/red.sh` applies one real defect at a time, runs the whole suite, requires a failure and
-restores the file. **18 guards, all proven red.** Two did not guard on the first run and both were
-fixed rather than explained; the script prints "mutation not applied" differently from "stayed
-green", because confusing those two is how a broken check gets recorded as a working one.
+restores the file. **26 guards: 25 proven red beside a scratch checkout, 1 proven red by hand.**
+
+It **refuses to start unless the baseline is green**, which it did not do at first and which made
+it briefly worthless. `mutate` reads a non-zero exit as proof the guard caught the mutation — so
+with the suite already failing for an unrelated reason, every mutation reports red without one of
+them being caught by anything. That is not hypothetical: `citations.test.ts` goes red the day one
+of the routes in `MISSING_ROUTES` lands, and one has (see below).
+
+Three outcomes are printed differently, because confusing any two of them is how a broken check
+gets recorded as a working one:
+
+| Report | Meaning |
+| --- | --- |
+| `ok` | the suite went red; the guard guards |
+| `!!` | the suite stayed green; the guard does not guard |
+| `??` | the mutation could not be applied; the guard may have moved |
+| `--` | **not proven here**: the sibling repository the assertion reads is not checked out, so the test skipped and had nothing to catch |
+
+The last one was added after a run in a scratch directory reported the `/auth/exchange` guard as
+broken. It is not: `citations.test.ts` reads `../tessera/src/server.ts` and correctly skips without
+it. Applied where `micro-tessera` is checked out, it fails immediately with `cite: nothing in
+.../server.ts matches "define('GET', '/v1/discover/promoted'"`. A guard that cannot run is not a
+guard that does not work.
 
 ## CI
 
-**There is no workflow in this repository, deliberately, and it is not because CI is unnecessary.**
-GitHub Actions is billing-blocked across the org — jobs fail in about four seconds with zero steps
-— so a workflow added now would produce a red run that says nothing about this code, and a green
-badge here would be a claim nobody verified. Everything above was run locally and the numbers in
-this README and in `docs/RENDER-BUDGET.md` are numbers that were seen.
+This repository calls the estate's reusable workflow — `.github/workflows/ci.yml` →
+`cloudsforge-online/micro-org/.github/workflows/web-ci.yml@main`, plus `secret-hygiene.yml`. It is
+**the first frontend outside `micro-web-template` to call it**: web-ci.yml had zero callers and
+could not have worked if it had any, because every frontend resolves `@cloudsforge/ui` through
+`link:../ui/packages/ui` while the workflow did a single checkout. It now checks micro-ui out as a
+sibling and installs it first.
+
+**No run of it has ever been observed, and this section will not pretend otherwise.** GitHub
+Actions is billing-blocked across the org: jobs fail in 3–16 seconds with zero steps and no logs.
+So every job was reproduced by hand instead, against **fresh clones in a scratch directory** with
+only this repository and micro-ui present — which is exactly what web-ci.yml checks out:
+
+* **build** — install sibling, install, typecheck, test (67 tests, 64 pass, **3 skipped** because
+  `../tessera` and `../tessera-assets` are absent, 0 fail), build, `dist/index.html` exists.
+* **runtime-hosts** — all four checks run verbatim. The first one **failed**, on test fixtures that
+  spelled out `import.meta.env.VITE_…` in order to prove the local scanner can fail. The expression
+  is assembled now; reading the workflow would not have found that.
+* **image** — built with `uipkg` as a named build context, then probed: `/` 200, an unknown path
+  404, `/discover` 200, and all five files in `public/` served with the sha256s
+  `micro-tessera-assets/MANIFEST.json` records.
+
+What was **not** verified: that GitHub resolves `micro-org/.github/workflows/web-ci.yml@main`, that
+`ESTATE_READ_TOKEN` is set on this repository, and that the runner's `cache: pnpm` and
+`type=gha` layer cache behave. None of those can be exercised locally, and none of them are green
+until somebody sees a run.
+
+### The suite is red beside the estate, and that is the mechanism working
+
+`GET /v1/me/balances` **now exists** in `micro-tessera` (`src/server.ts:872`, answering 503 with no
+figures rather than a zero). `MISSING_ROUTES` records it as absent and `citations.test.ts` asserts
+those routes are *still* absent — so that test fails whenever `../tessera` is checked out beside
+this repository, with the message *"wire it up and delete this entry from MISSING_ROUTES"*. That is
+what the test is for and it should not be deleted; the wallet strip has not been wired to the route
+yet. In CI the sibling is absent, so the assertion **skips** and the run is green — which is worth
+knowing about rather than being reassured by.
