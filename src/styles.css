@@ -1,0 +1,506 @@
+/*
+ * Aetherholm's own styles, on the shared substrate.
+ *
+ * Every colour, space, radius and type size is a `--cf-*` token from
+ * `ui/packages/ui/src/tokens.css`, and every `cf-` class is declared by
+ * `ui/packages/ui/src/ui.css` — `test/tokens.test.ts` proves both against a real checkout,
+ * because an undefined custom property invalidates its whole declaration silently and a class
+ * the design system does not declare fails exactly as quietly. There is NO hex literal, NO
+ * rgb()/hsl(), and NO var() fallback anywhere below: a fallback is where a hard-coded colour
+ * hides. The accent is Worlds' — set by data-cf-product on <html>, never restated here.
+ *
+ * Local classes are prefixed `tw-`. The shared ones this bundle uses: `.cf-btn`,
+ * `.cf-btn--ember` (the one solid call to action — there is no `.cf-btn--primary`), `.cf-input`,
+ * `.cf-input--mono`, `.cf-select`, `.cf-num`, `.cf-sr`.
+ */
+
+/* ---- shell ----------------------------------------------------------- */
+
+body {
+  margin: 0;
+  background: var(--cf-bg);
+  color: var(--cf-fg);
+  font-family: var(--cf-font-sans);
+  font-size: var(--cf-text-md);
+}
+
+.tw-main {
+  max-width: var(--cf-max-w);
+  margin: 0 auto;
+  padding: var(--cf-space-lg) var(--cf-space-md) var(--cf-space-3xl);
+}
+
+.tw-nav {
+  position: sticky;
+  top: var(--cf-bar-h);
+  z-index: 5;
+  background: var(--cf-bg-raised);
+  border-bottom: 1px solid var(--cf-line);
+}
+
+.tw-nav__inner {
+  max-width: var(--cf-max-w);
+  margin: 0 auto;
+  display: flex;
+  gap: var(--cf-space-xs);
+  padding: 0 var(--cf-space-md);
+  overflow-x: auto;
+}
+
+.tw-nav__link {
+  padding: var(--cf-space-sm) var(--cf-space-md);
+  color: var(--cf-fg-dim);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color var(--cf-speed) var(--cf-ease);
+}
+
+.tw-nav__link:hover {
+  color: var(--cf-fg);
+}
+
+.tw-nav__link.is-active {
+  color: var(--cf-accent);
+  border-bottom-color: var(--cf-accent);
+}
+
+.tw-degraded {
+  display: flex;
+  align-items: center;
+  gap: var(--cf-space-sm);
+  max-width: var(--cf-max-w);
+  margin: var(--cf-space-sm) auto 0;
+  padding: var(--cf-space-sm) var(--cf-space-md);
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--cf-radius);
+  background: var(--cf-surface);
+  color: var(--cf-warn);
+}
+
+.tw-degraded p {
+  margin: 0;
+}
+
+/* ---- page furniture --------------------------------------------------- */
+
+.tw-page-head {
+  margin-bottom: var(--cf-space-lg);
+}
+
+.tw-page-head h1 {
+  font-family: var(--cf-font-display);
+  font-size: var(--cf-text-2xl);
+  margin: 0 0 var(--cf-space-2xs);
+}
+
+.tw-page-head__meta {
+  color: var(--cf-fg-dim);
+  margin: 0;
+}
+
+.tw-page-head__note {
+  color: var(--cf-fg-mute);
+  font-size: var(--cf-text-sm);
+  margin: var(--cf-space-2xs) 0 0;
+}
+
+.tw-dim {
+  color: var(--cf-fg-dim);
+  font-size: var(--cf-text-sm);
+}
+
+.tw-warn {
+  color: var(--cf-warn);
+}
+
+.tw-link {
+  color: var(--cf-accent);
+}
+
+.tw-band {
+  font-size: var(--cf-text-xs);
+  color: var(--cf-fg-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-left: var(--cf-space-xs);
+}
+
+/* ---- tables ----------------------------------------------------------- */
+
+.tw-scroll {
+  overflow-x: auto;
+}
+
+.tw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--cf-text-sm);
+}
+
+.tw-table th,
+.tw-table td {
+  text-align: left;
+  padding: var(--cf-space-xs) var(--cf-space-sm);
+  border-bottom: 1px solid var(--cf-line);
+}
+
+.tw-table thead th {
+  color: var(--cf-fg-mute);
+  font-weight: 600;
+  font-size: var(--cf-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tw-table .tw-num,
+.tw-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- forms ------------------------------------------------------------ */
+
+.tw-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-sm);
+  padding: var(--cf-space-md);
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius-lg);
+  background: var(--cf-surface);
+  margin: var(--cf-space-md) 0;
+}
+
+.tw-form--inline {
+  flex-direction: row;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.tw-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-3xs);
+  font-size: var(--cf-text-sm);
+  color: var(--cf-fg-dim);
+}
+
+.tw-form h3 {
+  margin: 0;
+  font-size: var(--cf-text-lg);
+}
+
+.tw-form__row {
+  display: flex;
+  gap: var(--cf-space-md);
+  flex-wrap: wrap;
+}
+
+.tw-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--cf-space-md);
+}
+
+/* ---- states ------------------------------------------------------------ */
+
+.tw-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cf-space-sm);
+  padding: var(--cf-space-2xl) var(--cf-space-md);
+  text-align: center;
+}
+
+.tw-state__icon {
+  font-size: var(--cf-text-3xl);
+  color: var(--cf-fg-mute);
+}
+
+.tw-state--failed .tw-state__icon {
+  color: var(--cf-danger);
+}
+
+.tw-state--forbidden .tw-state__icon {
+  color: var(--cf-warn);
+}
+
+.tw-state__title {
+  font-size: var(--cf-text-lg);
+  font-weight: 600;
+  margin: 0;
+}
+
+.tw-state__hint {
+  color: var(--cf-fg-dim);
+  margin: 0;
+  max-width: 40rem;
+}
+
+.tw-state__meta {
+  color: var(--cf-fg-mute);
+  font-size: var(--cf-text-sm);
+}
+
+.tw-reqid {
+  user-select: all;
+}
+
+.tw-spinner {
+  width: var(--cf-space-lg);
+  height: var(--cf-space-lg);
+  border-radius: 50%;
+  border: 2px solid var(--cf-line-strong);
+  border-top-color: var(--cf-accent);
+  animation: tw-spin 0.9s linear infinite;
+}
+
+@keyframes tw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-spinner {
+    animation: none;
+  }
+}
+
+/* ---- the map ----------------------------------------------------------- */
+
+.tw-map__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+  gap: var(--cf-space-lg);
+}
+
+@media (max-width: 60rem) {
+  .tw-map__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tw-map__svg {
+  width: 100%;
+  height: auto;
+  background: var(--cf-bg-sunken);
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius-lg);
+}
+
+.tw-map__lane {
+  fill: none;
+  stroke: var(--cf-line-strong);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.tw-map__lane.is-active {
+  stroke: var(--cf-accent);
+  stroke-width: 2;
+  opacity: 1;
+}
+
+.tw-map__arrow {
+  fill: var(--cf-line-strong);
+}
+
+.tw-map__island {
+  fill: var(--cf-surface-solid);
+  stroke: var(--cf-fg-mute);
+  cursor: pointer;
+}
+
+.tw-map__island--shallows {
+  stroke: var(--cf-viz-1);
+}
+
+.tw-map__island--midreach {
+  stroke: var(--cf-viz-2);
+}
+
+.tw-map__island--highwind {
+  stroke: var(--cf-viz-3);
+}
+
+.tw-map__island.is-selected {
+  fill: var(--cf-accent);
+  stroke: var(--cf-accent);
+}
+
+.tw-map__label {
+  fill: var(--cf-fg-mute);
+  font-size: var(--cf-text-2xs);
+  font-family: var(--cf-font-mono);
+}
+
+.tw-map__panel {
+  padding: var(--cf-space-md);
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius-lg);
+  background: var(--cf-surface);
+}
+
+.tw-lane-list {
+  padding-left: var(--cf-space-md);
+  margin: var(--cf-space-xs) 0;
+  font-size: var(--cf-text-sm);
+}
+
+/* ---- cities ------------------------------------------------------------ */
+
+.tw-city-tabs {
+  display: flex;
+  gap: var(--cf-space-xs);
+  flex-wrap: wrap;
+  margin-bottom: var(--cf-space-md);
+}
+
+.tw-city-tab {
+  padding: var(--cf-space-2xs) var(--cf-space-sm);
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-surface);
+  color: var(--cf-fg-dim);
+  cursor: pointer;
+}
+
+.tw-city-tab.is-active {
+  color: var(--cf-accent-ink);
+  background: var(--cf-accent);
+  border-color: var(--cf-accent);
+}
+
+.tw-queue {
+  padding-left: var(--cf-space-md);
+}
+
+.tw-queue__kind {
+  font-size: var(--cf-text-xs);
+  color: var(--cf-fg-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: var(--cf-space-2xs);
+}
+
+.tw-garrison {
+  padding-left: var(--cf-space-md);
+  columns: 2;
+  font-size: var(--cf-text-sm);
+}
+
+/* ---- fleets ------------------------------------------------------------ */
+
+.tw-ships,
+.tw-cargo {
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius);
+  padding: var(--cf-space-sm);
+}
+
+.tw-ships__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--cf-space-sm);
+  align-items: center;
+  padding: var(--cf-space-3xs) 0;
+}
+
+.tw-preview {
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--cf-radius);
+  background: var(--cf-bg-raised);
+  padding: var(--cf-space-sm) var(--cf-space-md);
+}
+
+.tw-preview__cost {
+  font-size: var(--cf-text-lg);
+  margin: 0 0 var(--cf-space-2xs);
+}
+
+/* ---- reports and the chronicle ---------------------------------------- */
+
+.tw-report__digest {
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--cf-radius);
+  background: var(--cf-bg-raised);
+  padding: var(--cf-space-sm) var(--cf-space-md);
+  margin: var(--cf-space-md) 0;
+}
+
+.tw-digest {
+  display: block;
+  word-break: break-all;
+  user-select: all;
+  font-size: var(--cf-text-sm);
+}
+
+.tw-report__sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--cf-space-md);
+}
+
+.tw-json {
+  background: var(--cf-bg-sunken);
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius);
+  padding: var(--cf-space-sm);
+  overflow-x: auto;
+  font-family: var(--cf-font-mono);
+  font-size: var(--cf-text-xs);
+}
+
+.tw-notfound {
+  text-align: left;
+  max-width: 44rem;
+  padding-left: var(--cf-space-md);
+}
+
+.tw-notfound li {
+  margin-bottom: var(--cf-space-xs);
+}
+
+/* -----------------------------------------------------------------------
+ * The skip link. Hidden until focused, and then unmistakably visible.
+ *
+ * `top` moves rather than `display` toggling, because a link that is
+ * `display: none` is not focusable at all and a skip link that cannot be
+ * reached by Tab is decoration. The focused position clears the shared bar
+ * by its own height token, so it does not land underneath it.
+ * ------------------------------------------------------------------- */
+.tw-skip {
+  position: absolute;
+  left: var(--cf-space-sm);
+  top: -4rem;
+  z-index: 100;
+  padding: var(--cf-space-sm) var(--cf-space-xl);
+  border-radius: var(--cf-radius);
+  background: var(--cf-accent);
+  color: var(--cf-accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top var(--cf-speed) var(--cf-ease);
+}
+
+.tw-skip:focus {
+  top: calc(var(--cf-bar-h) + var(--cf-space-sm));
+}
+
+/*
+ * The skip link does not slide for a reader who asked for less motion.
+ *
+ * `prefers-reduced-motion: reduce` is an accessibility setting rather than a taste — for some
+ * readers motion causes nausea or triggers a vestibular episode — and this file already honours it
+ * elsewhere. The skip link was the last thing on the surface still moving, which is only
+ * discoverable by setting the preference and reading COMPUTED durations: the rule is right there
+ * in the stylesheet and says nothing about who it applies to. Found by BJ-A11Y-11.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .tw-skip {
+    transition: none;
+  }
+}
