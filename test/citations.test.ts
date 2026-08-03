@@ -79,13 +79,24 @@ test('the routes recorded as missing are still missing', (t: TestContext) => {
   // own tests go red if one starts calling a route that was never there. A comment would do
   // neither.
   // ══════════════════════════════════════════════════════════════════════════════════════════
-  const balances = MISSING_ROUTES.find((r) => r.want === 'GET /v1/me/balances')
-  assert.ok(balances, 'the balances gap is no longer recorded')
-  assert.doesNotMatch(
-    source,
-    /'\/v1\/me\/balances'/,
-    `micro-tessera now serves GET /v1/me/balances. ${balances.forScreen} has been waiting for it: ` +
-      'wire it up and delete this entry from MISSING_ROUTES.',
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  // THE BALANCES ENTRY IS GONE FROM `MISSING_ROUTES` AND THIS IS WHY, ASSERTED RATHER THAN SAID.
+  //
+  // It was here, it went red when micro-tessera grew the route, and the fix was to WIRE IT UP —
+  // which is what the red was for. The risk in deleting an entry is that the deletion is the whole
+  // change: the gap stops being recorded and nothing starts calling the route, so the screen is
+  // exactly as empty as before with nothing left to notice. So the entry's removal is held down
+  // from both sides — the route must be served, and this client must call it.
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  assert.equal(
+    MISSING_ROUTES.find((r) => r.want.includes('/v1/me/balances')),
+    undefined,
+    'GET /v1/me/balances is served by micro-tessera and must not be recorded as missing',
+  )
+  assert.match(source, /'\/v1\/me\/balances'/, 'micro-tessera no longer serves GET /v1/me/balances')
+  assert.ok(
+    ROUTE_ANCHORS.some((a) => a.includes('/v1/me/balances')),
+    'the balances route is served and this client pins no anchor to it',
   )
 
   assert.doesNotMatch(

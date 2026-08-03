@@ -359,19 +359,34 @@ test('the seed set is named as absent rather than substituted', async () => {
 
 /* ── the wallet strip ──────────────────────────────────────────────────────────────────────── */
 
-test('the wallet strip prints no digit while the balance route does not exist', async () => {
-  await withScreen(h(WalletStrip), { allowEmpty: true, routes: {} }, async (s) => {
+test('a 503 from the balance route prints no digit, and says so rather than showing zero', async () => {
+  // The route EXISTS now. What it answers when the ledger is unconfigured or unreachable is a 503
+  // with no figures — its own handler says "a player looking at their own earnings must never be
+  // shown a confident zero that means 'we did not ask'". This is the client half of that.
+  const routes: Routes = {
+    'GET /v1/me/balances': {
+      status: 503,
+      body: {
+        error: {
+          code: 'ledger_unconfigured',
+          message: 'balances are unavailable — this is not a balance of zero',
+          requestId: 'req-noledger-0001',
+        },
+      },
+    },
+  }
+  await withScreen(h(WalletStrip), { ...SESSION, allowEmpty: true, routes }, async (s) => {
     const strip = s.document.querySelector('[aria-label="Your EMBER"]')
     assert.ok(strip, 'the wallet strip did not render')
     const text = s.textOf(strip)
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // AN ABSENCE, ASSERTED WITH FORCE. The only digits permitted anywhere in this strip are the
-    // ones inside the route name it is complaining about, so they are removed before the check.
-    // A zero here would be `BigInt('') === 0n` wearing a label: on a screen about somebody's
-    // earnings, nothing displayed as if it were something.
+    // ones inside the route name and the request id it is quoting, so they are removed before the
+    // check. A zero here would be `BigInt('') === 0n` wearing a label: on a screen about
+    // somebody's earnings, nothing displayed as if it were something.
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    const withoutRouteName = text.replace(/v1/g, '')
+    const withoutRouteName = text.replace(/v1/g, '').replace(/req-[a-z]+-\d+/g, '')
     assert.doesNotMatch(
       withoutRouteName,
       /\d/,
@@ -382,8 +397,52 @@ test('the wallet strip prints no digit while the balance route does not exist', 
     assert.match(text, /Clearing/, 'Clearing is not labelled')
     assert.match(text, /Confirming/, 'Confirming is not labelled')
     assert.match(text, /in no total/, 'the confirming figure is not excluded from the totals')
-    assert.match(text, /GET \/v1\/me\/balances/, 'the missing route is not named')
-    s.clean('the wallet strip')
+    assert.match(text, /GET \/v1\/me\/balances/, 'the route that declined to answer is not named')
+    assert.match(text, /not a balance of zero/, "the service's own words are not shown")
+    s.clean('the wallet strip, 503')
+  })
+})
+
+test('the wallet strip reads the balance route, and asks for nobody in particular', async () => {
+  // The converse of the test above, so that one is not passing because the strip is simply broken.
+  // A 200 must produce the figures — and the request must carry no `subject`: the route reads the
+  // authenticated one, and a client-supplied subject is somebody else's earnings on your screen.
+  const routes: Routes = {
+    'GET /v1/me/balances': {
+      body: {
+        assetCode: 'EMBER',
+        balances: {
+          availableWei: '12480000000000000',
+          availableSparks: '12480',
+          reservedWei: '0',
+          reservedSparks: '0',
+          payoutDueWei: '3200000000000000',
+          payoutDueSparks: '3200',
+        },
+      },
+    },
+  }
+  await withScreen(h(WalletStrip), { ...SESSION, allowEmpty: true, routes }, async (s) => {
+    const text = s.textOf(s.document.querySelector('[aria-label="Your EMBER"]'))
+    assert.match(text, /Available\s*12,480 Sparks/, 'the available balance is not printed')
+    assert.match(text, /Clearing\s*3,200 Sparks/, 'payout_due is not printed as Clearing')
+
+    // Confirming is NOT a ledger balance and this route does not carry one. §8.2: posting a
+    // liability before 60 confirmations is `convertCoinToEmber`, the estate's oldest defect. So it
+    // stays unavailable even on a fully successful read, and that is correct rather than a gap.
+    assert.match(
+      text,
+      /Confirming\s*Not available yet/,
+      'an unconfirmed deposit was invented from a ledger read',
+    )
+
+    const calls = s.api.matching('GET /v1/me/balances')
+    assert.equal(calls.length, 1, 'the balances were not read exactly once')
+    const params = [
+      ...new URL(calls[0]?.url ?? '', 'https://tessera.cloudsforge.online').searchParams.keys(),
+    ]
+    assert.deepEqual(params, [], `the strip asked for balances with ${params.join(', ')}`)
+    s.clean('the wallet strip, read')
   })
 })
 

@@ -85,7 +85,7 @@ const SHIPPED: readonly Shipped[] = [
   {
     file: 'favicon-32x32.png',
     source: 'assets/chrome/favicon-32-32x32.png',
-    sha256: '02eb54a84be4e483b80534ee74a79060780b1ae6c12fd1326a6c24f5a55bdd68',
+    sha256: '6dafb9aaef2bd5ec28d1601e54914885a95d64e7ca38caccdde53eb19df87269',
     width: 32,
     height: 32,
     linked: true,
@@ -93,7 +93,7 @@ const SHIPPED: readonly Shipped[] = [
   {
     file: 'favicon-192x192.png',
     source: 'assets/chrome/favicon-192-192x192.png',
-    sha256: '38627f57268395bcd811b2cfc4eb6e4f06cdb1c2bb0919d74a21b233f1feaaf8',
+    sha256: '63dab0a48e2533663991cbb81978455b222084111b6363c9bc7e45725d9d922f',
     width: 192,
     height: 192,
     linked: true,
@@ -101,7 +101,7 @@ const SHIPPED: readonly Shipped[] = [
   {
     file: 'favicon-512x512.png',
     source: 'assets/chrome/favicon-512-512x512.png',
-    sha256: '1b068c3562cd32d719d3e782541ec35542a408fd74db575c6013d234a498e0c8',
+    sha256: 'a7f26930f63ce3c07de995741a1c026221e907d4fc346d42a15f09f61941c5a5',
     width: 512,
     height: 512,
     linked: true,
@@ -112,7 +112,7 @@ const SHIPPED: readonly Shipped[] = [
     // title, so iOS is handed the size it actually asks for instead of resampling.
     file: 'apple-touch-icon-180x180.png',
     source: 'assets/chrome/apple-touch-180-180x180.png',
-    sha256: '19b588a5d4e5f264550e72a95a11e586e7de412f6708cb4b08c6ca75e3206319',
+    sha256: 'c5b9675d16b81cbd3cc76f7c3771fe39b2889346c5bbda9c5ed72097d37ef40b',
     width: 180,
     height: 180,
     linked: true,
@@ -120,7 +120,7 @@ const SHIPPED: readonly Shipped[] = [
   {
     file: 'og-1200x630.png',
     source: 'assets/chrome/og-title-1200x630.png',
-    sha256: 'dcaa7ee63f7e857f25c8b59be156cc75d29d7f84343029094c822a694f138891',
+    sha256: 'b2bca265702da59d3f77aae293eb1b3afcee4a57083f34eccf1fbdd5c67e89ff',
     width: 1200,
     height: 630,
     linked: false,

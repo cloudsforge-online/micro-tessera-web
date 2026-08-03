@@ -126,6 +126,48 @@ export interface RankedParcel {
 }
 
 /**
+ * `GET /v1/me/balances` — what a player has, as the route serialises it.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * THE ROUTE LANDED, AND THE REFUSAL IT WAS BUILT AROUND SURVIVES IT.
+ *
+ * This entry used to be in `MISSING_ROUTES`, and `citations.test.ts` went red the day
+ * `micro-tessera` grew the route — which is the mechanism working rather than a test to silence.
+ *
+ * What has NOT changed is why the strip prints no digit when it has none. The service's own
+ * handler says it: an unconfigured or unreachable ledger answers **503 with no figures, never a
+ * `0`** — "a player looking at their own earnings must never be shown a confident zero that means
+ * 'we did not ask'". So this type's fields are the ones a 200 carries, a 503 carries none, and the
+ * client never invents the difference.
+ *
+ * Every amount is a decimal STRING beside the Sparks the service already computed. A JSON number
+ * is an IEEE 754 double and one EMBER is 10¹⁸ wei.
+ *
+ * ── THE THIRD FIGURE IS NOT HERE, AND THAT IS §8.2 RATHER THAN AN OMISSION ────────────────────
+ *
+ * §8.2's strip is Available, Clearing and **Confirming**. Confirming is an observed-but-unconfirmed
+ * deposit and "is NOT a ledger balance and must never be": posting a liability before 60
+ * confirmations is `convertCoinToEmber`, the estate's oldest defect. It comes from the indexer, and
+ * this route reads the ledger. So the wire carries two of the three, the strip prints the third as
+ * unavailable, and nothing anywhere folds it into a total.
+ *
+ * `reservedWei` is a fourth figure the route does carry — EMBER held against an open venue booking.
+ * It is deliberately not added into Available: it is theirs but committed, and adding it would
+ * overstate what is spendable, which is the same class of error as printing a zero.
+ */
+export interface WireBalances {
+  readonly assetCode: string
+  readonly balances: {
+    readonly availableWei: string
+    readonly availableSparks: string
+    readonly reservedWei: string
+    readonly reservedSparks: string
+    readonly payoutDueWei: string
+    readonly payoutDueSparks: string
+  }
+}
+
+/**
  * `tessera/src/economy.ts` — `export interface PlatformTerms`, plus the flag the route adds.
  *
  * `identicalForEveryAccount` is stated on the wire by the service and DISPLAYED here. The client
@@ -177,6 +219,7 @@ export const ROUTE_ANCHORS: readonly string[] = [
   "define('GET', '/v1/discover'",
   "define('GET', '/v1/terms'",
   "define('GET', '/v1/me/parcels'",
+  "define('GET', '/v1/me/balances'",
   "define('GET', '/v1/objects'",
   "define('GET', '/v1/objects/:id'",
   "define('GET', '/v1/listings'",
@@ -204,17 +247,9 @@ export const ROUTE_ANCHORS: readonly string[] = [
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 export const MISSING_ROUTES: readonly { readonly want: string; readonly forScreen: string; readonly why: string }[] = [
-  {
-    want: 'GET /v1/me/balances',
-    forScreen: 'the wallet strip',
-    why:
-      '§8.2 specifies three figures — Available, Clearing (payout_due) and Confirming (an ' +
-      'observed-but-unconfirmed deposit, from the indexer, in no balance and no total). ' +
-      'micro-tessera serves none of them. It holds a ledger client (`tessera/src/ledgerclient.ts`) ' +
-      'but no read route hangs off it. The strip renders the three labels and an explicit ' +
-      '"not available yet" rather than a zero, because BigInt("") is 0n and a zero on an ' +
-      'earnings screen is a claim.',
-  },
+  // `GET /v1/me/balances` was the fourth entry here and is gone, because the route LANDED —
+  // `citations.test.ts` went red and named the screen waiting on it, which is the whole mechanism.
+  // The strip now calls it. What did not change is the refusal: a 503 prints no digit.
   {
     want: 'GET /v1/wards/:id/terrain (or a `seed` on the Ward)',
     forScreen: 'the world canvas',
@@ -225,16 +260,28 @@ export const MISSING_ROUTES: readonly { readonly want: string; readonly forScree
       'coordinate — see src/render/terrain.ts, which says at length that this is a RENDERING ' +
       'choice with no authority and would be replaced the day the service serves ground.',
   },
+  // Split into two, one per route, so `MISSING_ROUTES.length` is the number of ROUTES waited on
+  // rather than the number of paragraphs somebody happened to write. They land independently: a
+  // sprite path could arrive on `WorldObject` with the seed set still unreachable, and either
+  // arriving alone must turn exactly one of these red.
   {
-    want: 'a sprite path on WorldObject, and a route for the 96 platform seed objects',
-    forScreen: 'the world canvas and the build tray',
+    want: 'a sprite path on WorldObject',
+    forScreen: 'the world canvas',
     why:
       'A placement names an `objectId`; `GET /v1/objects/:id` returns a WorldObject whose only ' +
       'byte-level field is `checksum`. Nothing maps an object to a path under ' +
-      'micro-tessera-assets, and `GET /v1/objects` returns only the caller\'s OWN fired objects — ' +
-      'so the 96 seed objects that are "free to every account forever" (§2.6) are unreachable. ' +
-      'The client renders a placement whose sprite it cannot resolve as an unresolved marker, ' +
-      'never as a substitute sprite.',
+      'micro-tessera-assets. The client renders a placement whose sprite it cannot resolve as an ' +
+      'unresolved marker, never as a substitute sprite — a fallback chair would be this client ' +
+      'inventing world state.',
+  },
+  {
+    want: 'a route for the 96 platform seed objects',
+    forScreen: 'the Kiln and the build tray',
+    why:
+      '`GET /v1/objects` returns only the caller\'s OWN fired objects, so the 96 seed objects ' +
+      'that are "free to every account forever" (§2.6) are unreachable from this bundle. They are ' +
+      'the counterweight that makes paying for Kiln capacity honest (§7.2), so the Kiln screen ' +
+      'names them as absent rather than showing a shorter list as if it were the set.',
   },
 ]
 
@@ -284,6 +331,16 @@ export const getTerms = (): Promise<Terms> => tessera('/v1/terms')
 
 /** `GET /v1/me/parcels`. */
 export const myParcels = (): Promise<{ parcels: Parcel[] }> => tessera('/v1/me/parcels')
+
+/**
+ * `GET /v1/me/balances` — Available, Reserved and Clearing, or a 503 and nothing.
+ *
+ * There is no `?subject=` and there must not be: the route reads the authenticated subject. And
+ * there is no default value on this side — a caller that could not read the balances gets a
+ * rejected promise, not zeroes. `??  0n` anywhere downstream of this function would reintroduce
+ * exactly the claim the 503 exists to avoid making.
+ */
+export const myBalances = (): Promise<WireBalances> => tessera('/v1/me/balances')
 
 /** `GET /v1/objects` — the caller's own fired objects. */
 export const myObjects = (): Promise<{ objects: WorldObject[] }> => tessera('/v1/objects')
