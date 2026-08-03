@@ -1,5 +1,11 @@
 # micro-tessera-web
 
+[![ci](https://github.com/cloudsforge-online/micro-tessera-web/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudsforge-online/micro-tessera-web/actions/workflows/ci.yml)
+![node](https://img.shields.io/badge/node-%3E%3D22-5FA04E?logo=node.js&logoColor=white)
+![typescript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![module](https://img.shields.io/badge/module-ESM-F7DF1E?logo=javascript&logoColor=black)
+![tests](https://img.shields.io/badge/tests-in--process%20DOM-6E56CF)
+
 The client for **Tessera**, the fourth Forge Worlds title: a persistent, user-made isometric world
 you enter in a browser tab. Claim ground for free, fire an object out of a prompt, open a place
 people go to, and get paid in EMBER when someone buys what you made.
@@ -278,3 +284,10 @@ happened to be sitting in `public/`.
 `MISSING_ROUTES` still records **three** routes as absent — ward terrain or a `seed`, a sprite path
 on `WorldObject`, and a route for the 96 seed objects. Those tests go red the day the routes land.
 **That is the mechanism; do not delete them.**
+
+---
+
+## Provenance
+
+The code in this repository was written by **Claude Opus 5** and **Claude Fable 5**, assets
+generated with **FLUX 2 Pro**, under human direction and review.
