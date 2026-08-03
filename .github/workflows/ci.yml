@@ -1,0 +1,102 @@
+name: CI
+
+# ────────────────────────────────────────────────────────────────────────────────────────────────
+# THIS REPOSITORY IS THE FIRST REAL CALLER OF web-ci.yml, and that is the interesting fact about
+# this file rather than a footnote.
+#
+# The reusable workflow had ZERO callers and could not have worked if it had any: every frontend in
+# the estate resolves @cloudsforge/ui through `link:../ui/packages/ui`, and web-ci.yml did a single
+# checkout. A `link:` specifier is a symlink to a path — with no sibling on disk it installs as a
+# DANGLING link, so `Install` passes and `Typecheck` then cannot find one @cloudsforge/ui export.
+# Thirteen repositories each kept 200-900 lines of bespoke CI and a commented-out `uses:` saying
+# they were waiting for the design system to be published. They were waiting for one checkout.
+# That is fixed (micro-org web-ci.yml:87-121: app in `app/`, micro-ui beside it, sibling installed
+# FIRST), and micro-web-template calls it. This is the first frontend outside the template to.
+#
+# ── EVERY VALUE BELOW WAS READ OFF web-ci.yml's `workflow_call` BLOCK, NOT COPIED FROM PROSE ─────
+#
+# Its real signature is seven inputs and one secret:
+#
+#   app             required, string    — the frontend's registry name
+#   node-version    optional, '22'      — correct for this repository (package.json engines >=22)
+#   package-manager optional, 'pnpm'    — correct; the lockfile is pnpm-lock.yaml at pnpm@11.9.0,
+#                                         which web-ci.yml pins in pnpm/action-setup
+#   source-dir      optional, 'src'     — DECLARED AND NEVER READ. It appears exactly once in
+#                                         web-ci.yml, on line 29, where it is defined. Passing it
+#                                         would look like configuration and configure nothing, so
+#                                         it is not passed. Reported rather than worked around.
+#   dockerfile      optional, 'Dockerfile'
+#   build-image     optional, true
+#   deep-link-path  optional, ''
+#   secrets.estate_token  optional      — falls back to github.token, which only works if micro-ui
+#                                         is public. It is not.
+#
+# Everything left out above is left out because its default is already right for this repository.
+# A restated default is a value that will be wrong later and look deliberate.
+#
+# ── WHAT THIS FILE DELIBERATELY DOES NOT ADD ─────────────────────────────────────────────────────
+#
+# micro-web-template keeps two extra local jobs (`rules` and `served-headers`) and argues they are
+# not duplicates. `rules` largely IS a duplicate here — test/routes.test.ts already holds nginx.conf
+# against src/lib/routes.ts, with comments stripped first for the same reason the template had to
+# learn to strip them. `served-headers` is NOT covered anywhere for this repository: nothing here
+# probes a running container for the headers nginx.conf appears to promise, and nginx's `add_header`
+# inheritance is all-or-nothing per level, which is exactly the defect that config's comments say it
+# was written against. That gap is real and is named here rather than left for someone to discover.
+# It is not filled in the same change that lands the first caller of a workflow nobody can watch
+# run — see the CI note in README.md.
+# ────────────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: cloudsforge-online/micro-org/.github/workflows/web-ci.yml@main
+    with:
+      # As in the registry and in micro-deploy, which builds this image as the `tessera-web`
+      # service from `../../tessera-web` (deploy/compose/docker-compose.estate.yml:1807) and routes
+      # to `http://tessera-web:8080` (deploy/gateway/dynamic/estate-web.yml:468). The repository is
+      # micro-tessera-web; the app is tessera-web.
+      app: tessera-web
+
+      # ══════════════════════════════════════════════════════════════════════════════════════════
+      # `/discover`, AND THE VALUE CAME FROM src/lib/routes.ts RATHER THAN FROM A SENTENCE.
+      #
+      # This repository already decided which path CI should deep-link to and wrote it down as an
+      # exported constant — `DEEP_LINK_PATH` in src/lib/routes.ts — with `test/routes.test.ts`
+      # asserting it is a real route AND that `protected === false`, because the image probe has no
+      # token and a protected route would answer 200 at nginx and then render a sign-in prompt the
+      # probe cannot tell from a working page.
+      #
+      # `/wards` would also have passed: it is in nginx.conf's enumerated block and it is
+      # unprotected. It is still the wrong answer, because it would leave the workflow and the
+      # constant disagreeing with nothing anywhere to notice — the shape of defect that put four
+      # tests in this estate on the wrong function. `test/routes.test.ts` now reads THIS FILE and
+      # requires the two to match, so the pair cannot drift.
+      # ══════════════════════════════════════════════════════════════════════════════════════════
+      deep-link-path: /discover
+    secrets:
+      # micro-ui is private. web-ci.yml falls back to `github.token`, which cannot read it: the
+      # sibling checkout 404s, `link:../ui/packages/ui` installs as a dangling symlink, and
+      # Typecheck fails on the first @cloudsforge/ui import. ESTATE_READ_TOKEN is the name the nine
+      # service repositories already pass to service-ci.yml's identically-named secret.
+      estate_token: ${{ secrets.ESTATE_READ_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+
+  hygiene:
+    # From org/templates/web/_github/workflows/ci.yml, which is what a new frontend is meant to
+    # inherit. `require-dockerignore` is its only input and defaults to true, which is right here:
+    # this repository ships a Dockerfile and a .dockerignore.
+    uses: cloudsforge-online/micro-org/.github/workflows/secret-hygiene.yml@main
+    permissions:
+      contents: read

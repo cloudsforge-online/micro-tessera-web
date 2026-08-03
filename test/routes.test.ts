@@ -112,6 +112,61 @@ test('the CI deep-link path is a real route that needs no session', () => {
   assert.equal(route.protected, false, `${DEEP_LINK_PATH} requires a session; the probe has none`)
 })
 
+test('CI deep-links to the path this repository declares, not one somebody typed', () => {
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // THE FOURTH PLACE A ROUTE IS DECLARED, and the one that had nothing holding it.
+  //
+  // `DEEP_LINK_PATH` existed and was tested before any workflow used it, so the test above proved
+  // the constant was a valid route and NOTHING proved CI was passing that route. The value in
+  // .github/workflows/ci.yml is a YAML string: it cannot import this constant, and a workflow that
+  // deep-links to a path this file later stops declaring goes red with a message about nginx —
+  // pointing at the wrong file.
+  //
+  // The brief that asked for this workflow said `/wards`. That would have passed: it is in
+  // nginx.conf's enumerated block and it is unprotected. It is not what this repository declares,
+  // and a value that works while disagreeing with the source is the exact defect this file exists
+  // to catch — three declarations of a route that agree by luck rather than by construction.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  const workflow = read('.github/workflows/ci.yml')
+  // Comments stripped first, for the third time in this repository: the file argues for the value
+  // in prose above the value, naming `/wards` as the rejected alternative. An unstripped scan finds
+  // the rationale and grades it.
+  const yaml = workflow
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n')
+  const declared = /^\s*deep-link-path:\s*(\S+)\s*$/m.exec(yaml)
+  assert.ok(declared, '.github/workflows/ci.yml passes no deep-link-path')
+  assert.equal(
+    declared[1],
+    DEEP_LINK_PATH,
+    'the workflow deep-links to a path src/lib/routes.ts does not declare as DEEP_LINK_PATH',
+  )
+})
+
+test('CI names the app micro-deploy builds, and calls the estate workflow rather than a copy', () => {
+  // `app:` is web-ci.yml's one REQUIRED input and it names the image. micro-deploy builds this
+  // repository as the `tessera-web` service and routes to `http://tessera-web:8080`; a CI tag that
+  // said anything else would be a second name for one artefact.
+  const yaml = read('.github/workflows/ci.yml')
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n')
+  assert.match(yaml, /^\s*app:\s*tessera-web\s*$/m, 'the workflow does not build tessera-web')
+  assert.match(
+    yaml,
+    /uses:\s*cloudsforge-online\/micro-org\/\.github\/workflows\/web-ci\.yml@main/,
+    'this repository has gone back to a bespoke copy of the estate CI',
+  )
+  // Without a contents:read token the micro-ui checkout 404s, `link:` installs as a dangling
+  // symlink, and Typecheck fails on the first @cloudsforge/ui import — with no clue as to why.
+  assert.match(
+    yaml,
+    /estate_token:\s*\$\{\{\s*secrets\.ESTATE_READ_TOKEN\s*\}\}/,
+    'the workflow passes no estate token, so the private micro-ui checkout will 404',
+  )
+})
+
 test('/world-assets is served without a fallback, so a missing sprite 404s', () => {
   const conf = directives()
   const block = /location \/world-assets\/ \{([\s\S]*?)\n {4}\}/.exec(conf)

@@ -27,6 +27,37 @@ cd "$(dirname "$0")/.."
 pass=0
 fail=0
 
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# THE BASELINE MUST BE GREEN, AND THIS SCRIPT WAS SILENTLY WORTHLESS WITHOUT THIS CHECK.
+#
+# `mutate` applies a defect and requires `pnpm test` to FAIL. It reads a non-zero exit as proof
+# that the guard caught the mutation. If the suite is ALREADY failing for some unrelated reason,
+# every mutation "proves red" without any of them being caught by anything — twenty-six guards
+# reported as working, on the strength of one failure that none of them caused.
+#
+# That is not hypothetical here. `citations.test.ts` asserts three routes are still ABSENT from
+# micro-tessera and goes red the day one lands — which is the mechanism working, and is exactly the
+# state this repository is in: `GET /v1/me/balances` now exists (tessera/src/server.ts:872), so the
+# suite is red whenever `../tessera` is checked out beside this repository. Running this script
+# there would have printed "26 guards proven red" and meant nothing.
+#
+# So: refuse to start unless the suite is green. It is the same shape as every other rule in this
+# file — a check that cannot distinguish success from failure is worse than no check, because
+# somebody reads its output and believes it.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+if ! pnpm test >/tmp/tessera-red-baseline.log 2>&1; then
+  echo "REFUSING TO RUN: the suite is already failing before any mutation is applied."
+  echo
+  echo "Every mutation below would be reported as 'red' on the strength of this failure rather"
+  echo "than on the strength of the guard it targets. Fix the baseline first, or run this where"
+  echo "the sibling repositories that some assertions read are not checked out."
+  echo
+  grep -E '^(not ok|✖|  Assertion|  AssertionError)' /tmp/tessera-red-baseline.log | head -20
+  exit 2
+fi
+echo "baseline: green. Every failure below is therefore attributable to its mutation."
+echo
+
 # mutate <label> <file> <python-expression-replacing-source>
 mutate() {
   local label="$1" file="$2" find="$3" replace="$4"
@@ -171,6 +202,57 @@ mutate 'the zoom floor does not degrade a fitted Plot' src/render/renderer.ts \
 mutate 'the recorded run used a GPU' docs/render-budget.json \
   '"softwareRaster": false' \
   '"softwareRaster": true'
+
+# 19. The Dockerfile must copy public/. This is THE defect this repository shipped: public/ tracked
+#     zero files, git does not store an empty directory, and `COPY public ./public` therefore failed
+#     on every clean checkout — the image built only on the machine that authored it. The guard has
+#     to survive the line being removed as well as the directory being emptied.
+mutate 'the Dockerfile copies public/ into the image' Dockerfile \
+  'COPY public ./public' \
+  '# COPY public ./public'
+
+# 20. index.html must link every icon it ships. A file in public/ that nothing points at is dead
+#     weight that looks like it is working; the two-way check is what makes a placeholder visible.
+mutate 'index.html links every icon it ships' index.html \
+  '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />' \
+  ''
+
+# 21. index.html must link nothing it does not ship. The other direction: a href to a file that is
+#     not in public/ is a 404 in every tab, and nothing about the page looks wrong.
+mutate 'index.html ships every icon it links' index.html \
+  '<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />' \
+  '<link rel="icon" type="image/png" sizes="32x32" href="/favicon-16x16.png" />'
+
+# 22. The og card must be a file that ships, not just a tag that exists.
+mutate 'the og:image names a file that is really there' index.html \
+  '<meta property="og:image" content="/og-1200x630.png" />' \
+  '<meta property="og:image" content="/og-title-1200x630.png" />'
+
+# 23. The workflow must deep-link to the path this repository DECLARES. `/wards` is the value the
+#     brief for this change asked for, and it would have passed the image probe: it is in nginx's
+#     enumerated block and it is unprotected. It is still wrong, because it disagrees with
+#     DEEP_LINK_PATH with nothing anywhere to notice. That is the mutation, precisely.
+mutate 'CI deep-links to the declared path' .github/workflows/ci.yml \
+  'deep-link-path: /discover' \
+  'deep-link-path: /wards'
+
+# 24. The workflow must name the app micro-deploy builds, or CI tags an artefact by a second name.
+mutate 'CI names the app micro-deploy builds' .github/workflows/ci.yml \
+  'app: tessera-web' \
+  'app: micro-tessera-web'
+
+# 25. Without the estate token the private micro-ui checkout 404s, `link:` installs as a dangling
+#     symlink, and Typecheck fails on the first @cloudsforge/ui import with no clue as to why.
+mutate 'CI passes a token that can read the private micro-ui' .github/workflows/ci.yml \
+  'estate_token: ${{ secrets.ESTATE_READ_TOKEN }}' \
+  'estate_token: ${{ secrets.GITHUB_TOKEN }}'
+
+# 26. No source file may read a build-time environment variable. Vite inlines it, the bundle then
+#     carries its environment, and one image stops serving every environment. Written as REAL CODE,
+#     because the scan strips comments — the trap this repository has fallen into three times.
+mutate 'no source file reads a build-time environment variable' src/lib/hosts.ts \
+  'return `${pageOrigin()}/world-assets`' \
+  'return import.meta.env.VITE_ASSET_BASE ?? `${pageOrigin()}/world-assets`'
 
 echo
 printf 'guards proven red: %d   guards that stayed green: %d\n' "$pass" "$fail"
