@@ -54,7 +54,19 @@ export function AppShell() {
         </div>
       </nav>
 
-      {account && <WalletStrip />}
+      {/*
+        `account.signedIn`, NOT `account`.
+
+        `account` is always an object — `{ signedIn: false, handle: null, roles: null }` when
+        nobody is signed in — so `{account && …}` is always true and the strip rendered for every
+        anonymous visitor. Found by driving the built bundle in a real browser and reading the
+        body text: "Sign in … Available Not available yet". A stranger who has never had an
+        account was being shown a panel about their EMBER.
+
+        Neither the unit tests nor the type checker could have caught it: the strip renders
+        correctly in isolation, and a truthy object is a perfectly good object.
+      */}
+      {account.signedIn && <WalletStrip />}
 
       <main className="tw-main" id="main">
         <Outlet />

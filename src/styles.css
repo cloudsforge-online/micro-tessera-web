@@ -1,5 +1,5 @@
 /*
- * Aetherholm's own styles, on the shared substrate.
+ * Tessera's own styles, on the shared substrate.
  *
  * Every colour, space, radius and type size is a `--cf-*` token from
  * `ui/packages/ui/src/tokens.css`, and every `cf-` class is declared by
@@ -503,4 +503,73 @@ body {
   .tw-skip {
     transition: none;
   }
+}
+
+/* ── Tessera's own screens ───────────────────────────────────────────────────────────────────
+   Everything above is the template's. Everything below belongs to this client.
+   No colour is restated: every value is a token from @cloudsforge/ui/tokens.css, and the accent
+   is Forge Worlds' #6d9a49 by way of `data-cf-product="worlds"` on <html> (23-tessera.md §1.1 —
+   a title wears its product's colour rather than claiming its own).
+─────────────────────────────────────────────────────────────────────────────────────────────── */
+
+.tw-wallet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1.25rem;
+  border-block-end: 1px solid var(--cf-border, rgba(255, 255, 255, 0.08));
+}
+.tw-wallet__figure { min-width: 10rem; }
+.tw-wallet__name { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
+.tw-wallet__value { font-size: 1.1rem; font-variant-numeric: tabular-nums; margin: 0.1rem 0; }
+.tw-wallet__note { font-size: 0.75rem; opacity: 0.65; margin: 0; }
+.tw-wallet__gap { flex-basis: 100%; font-size: 0.8rem; opacity: 0.75; margin: 0.25rem 0 0; }
+
+/* The canvas fills its stage and the stage has a real height, because a canvas with no height is
+   a canvas that draws nothing and reports no error. */
+.tw-world__stage { block-size: min(70vh, 720px); inline-size: 100%; overflow: hidden; border-radius: 6px; }
+.tw-world__canvas { inline-size: 100%; block-size: 100%; touch-action: none; cursor: grab; }
+.tw-world__canvas:active { cursor: grabbing; }
+.tw-world__stats { font-size: 0.85rem; opacity: 0.8; margin: 0.5rem 0 0; }
+.tw-world__missing { font-size: 0.85rem; margin: 0.25rem 0 0; }
+
+.tw-places { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+.tw-place { inline-size: 100%; text-align: start; display: flex; flex-wrap: wrap; gap: 0.5rem;
+  align-items: baseline; padding: 0.75rem 1rem; background: none; cursor: pointer;
+  border: 1px solid var(--cf-border, rgba(255, 255, 255, 0.12)); border-radius: 6px; color: inherit; }
+.tw-place__tier { font-weight: 600; text-transform: capitalize; }
+.tw-place__where { font-variant-numeric: tabular-nums; opacity: 0.7; }
+.tw-place__gate { margin-inline-start: auto; font-size: 0.8rem; opacity: 0.8; }
+
+.tw-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 0.1rem 0.4rem; border-radius: 3px; border: 1px solid currentColor; opacity: 0.8; }
+.tw-muted { opacity: 0.65; font-size: 0.85em; }
+.tw-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+.tw-footnote { font-size: 0.8rem; opacity: 0.7; margin-block-start: 1rem; }
+.tw-gap { margin-block-start: 2rem; }
+.tw-terms__list { display: flex; flex-wrap: wrap; gap: 2rem; margin: 0.5rem 0 1.5rem; }
+.tw-terms__list dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; }
+.tw-terms__list dd { margin: 0.15rem 0 0; }
+.tw-instances { margin: 0.5rem 0; }
+.tw-instances__row { display: flex; gap: 1rem; padding: 0.25rem 0; }
+.tw-instances__row dt { font-weight: 600; min-inline-size: 7rem; }
+.tw-instances__row dd { margin: 0; }
+
+.tw-field { display: block; margin-block-end: 1rem; }
+.tw-field--inline { display: inline-flex; gap: 0.5rem; align-items: center; }
+.tw-field__label { display: block; font-size: 0.8rem; opacity: 0.8; margin-block-end: 0.25rem; }
+.tw-field__help { display: block; font-size: 0.75rem; opacity: 0.7; margin-block-start: 0.25rem; }
+.tw-field-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.tw-field-row > .tw-field { flex: 1 1 12rem; }
+.tw-radio { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.15rem 0; }
+.tw-form { margin-block-end: 2rem; }
+.tw-form__note { font-size: 0.8rem; opacity: 0.75; }
+.tw-form__error { color: var(--cf-danger, #e2725b); }
+.tw-form__ok { opacity: 0.9; }
+.tw-inline-error { display: block; font-size: 0.8rem; color: var(--cf-danger, #e2725b); }
+.tw-visually-hidden {
+  position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }

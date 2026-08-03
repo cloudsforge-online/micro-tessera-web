@@ -13,7 +13,7 @@ export function NotFoundPage() {
         ◇
       </span>
       <p className="tw-state__title">There is nothing at this address</p>
-      <p className="tw-state__hint">The winds know these places:</p>
+      <p className="tw-state__hint">These places exist:</p>
       <ul className="tw-notfound">
         {ROUTES.map((route) => (
           <li key={route.path}>
