@@ -6,40 +6,30 @@
  * served from the apex. Nothing here reads a build-time constant; see the note in vite.config.ts.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
- * THE PART THAT IS NOT LIKE THE OTHER FRONTENDS, AND WHY IT IS A CORRECTION RATHER THAN A GUESS
+ * THIS FILE USED TO CARRY A WORKAROUND, AND A TEST DELETED IT.
  *
- * `@cloudsforge/ui`'s surface registry has no `tessera` key. `SurfaceKey`
- * (`ui/packages/ui/src/surfaces.ts:23-36`) enumerates every addressable surface and Tessera is not
- * among them, because Tessera joined the programme after the registry was written
- * (docs/ecosystem/23-tessera.md). §10.2 lists the registry row as a REQUIRED edit to `micro-ui`
- * — `subdomain: 'tessera'`, `devPort: 4022`, `accent: '#6d9a49'`, `inSwitcher: false` — and
- * `micro-ui` is not this repository's to edit.
+ * `@cloudsforge/ui`'s surface registry had no `tessera` key when this client was written.
+ * `SurfaceKey` enumerates every addressable surface, `KNOWN_SUBS` is built from their subdomains,
+ * and `cloudsforgeHosts()` derives the apex by stripping a known subdomain from the browser's
+ * hostname. An unknown prefix is left alone — correct for a preview deployment at
+ * `pr-42.example.dev`, and WRONG for this app in production. Served from `https://tessera.<apex>`
+ * the registry resolved `nimbus.tessera.<apex>`, `pay.tessera.<apex>` and
+ * `lantern.tessera.<apex>`: three hostnames that do not exist, one of which is sign-in.
  *
- * So the host is DERIVED from a registry entry rather than declared, exactly as
- * `micro-emberkin-web` did before its own row landed. The derivation adds the two facts the
- * registry does not carry — the subdomain `tessera` and the dev port 4022 — and takes everything
- * else, including the whole localhost-versus-apex decision, from the registry's answer.
+ * So `hosts()` corrected the registry's answer — a `deriveSurfaceUrl` for the API base and a
+ * `stripOwnLabel` over every other surface — and `test/hosts.test.ts` asserted the WRONG answer
+ * from `cloudsforgeHosts()`, deliberately, so that the correction was a correction rather than a
+ * guess AND so that this repository would go red the day the registry gained its row.
  *
- * ── And the second half, which is a real defect rather than an inconvenience ───────────────────
+ * It went red. `micro-ui` now carries the surface (`ui/packages/ui/src/surfaces.ts`, `key:
+ * 'tessera'`, `subdomain: 'tessera'`, `devPort: 4022`), `KNOWN_SUBS` contains it, and the
+ * workaround is gone — `deriveSurfaceUrl`, `stripOwnLabel` and the corrected `hosts()`, in full,
+ * in the same change that noticed.
  *
- * `cloudsforgeHosts()` derives the apex by stripping a KNOWN subdomain from the browser's
- * hostname, and `KNOWN_SUBS` is built from the registry's own subdomains. `tessera` is not one of
- * them, so an unknown prefix is left alone — which is correct for a preview deployment at
- * `pr-42.example.dev` and WRONG for this app in production. Served from `https://tessera.<apex>`
- * the registry resolves:
- *
- *     nimbus  → https://nimbus.tessera.<apex>     ← does not exist
- *     pay     → https://pay.tessera.<apex>        ← does not exist
- *     lantern → https://lantern.tessera.<apex>    ← does not exist
- *
- * Sign-in, billing and telemetry would every one of them address a hostname that is not there.
- * `test/hosts.test.ts` drives `cloudsforgeHosts()` from that hostname and asserts the WRONG
- * answer, so this cannot be quietly "fixed" by assumption: the day the registry gains its row,
- * that test goes red and this file gets deleted down to two passthroughs.
- *
- * `hosts()` therefore CORRECTS the registry's answer rather than passing it through. It is a
- * mechanical rewrite of a string the registry produced, confined to this file, and a no-op in
- * every other environment — localhost, an apex, a preview deployment.
+ * That is the whole value of writing the promise as a failing condition rather than as a comment.
+ * `micro-emberkin-web` made the same promise in prose: its rewire happened in two halves months
+ * apart, and only half-happened anyway — `hosts()` was repointed while all four dead exports
+ * survived, still imported by a settings screen.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import { cloudsforgeHosts, type CloudsForgeHosts, type SurfaceKey } from '@cloudsforge/ui'
@@ -58,71 +48,31 @@ export const PRODUCT: SurfaceKey = 'worlds'
 /** The name reported to the observability ingest and shown in error copy. */
 export const APP_NAME = 'tessera-web'
 
-/**
- * The subdomain `micro-tessera` will be served on. §10.2's registry row.
- *
- * Deleted the day `ui/packages/ui/src/surfaces.ts` carries a `tessera` entry.
- */
+/** The subdomain `micro-tessera` is served on, as the registry now carries it. */
 export const TESSERA_SUBDOMAIN = 'tessera'
 
 /**
  * The port `micro-tessera` binds: 4022.
  *
- * Read from the service, not chosen here — `tessera/src/env.ts` declares
+ * Kept as a named constant even though `apiBase()` no longer uses it, because `test/hosts.test.ts`
+ * asserts the registry's `devPort` equals it — a check that would be worth nothing if both sides
+ * read the registry. The number is the service's own: `tessera/src/env.ts` declares
  * `export const DEFAULT_PORT = 4022` and argues it at length. §10.1 separates three port spaces
- * this estate keeps confusing, and 4022 sits deliberately BELOW the derived `4100 + index`
- * compose block so that no number of repositories appended to `deployableRepos()` can grow into
- * it. Three services already lost that argument: emberkin binds 4100 which is identity's compose
- * host port, aetherholm binds 4120 which is admin-api's, nda binds 4110 which is notify's.
+ * this estate keeps confusing, and 4022 sits deliberately BELOW the derived `4100 + index` compose
+ * block so that no number of repositories appended to `deployableRepos()` can grow into it. Three
+ * services already lost that argument: emberkin binds 4100 which is identity's compose host port,
+ * aetherholm binds 4120 which is admin-api's, nda binds 4110 which is notify's.
  */
 export const TESSERA_DEV_PORT = 4022
 
 /**
- * Swap a registry-resolved URL onto a surface the registry does not carry.
+ * Every CloudsForge base URL the registry knows, for the current environment.
  *
- * `anchor` is any URL `cloudsforgeHosts()` produced. On localhost only the port differs, so the
- * port is replaced; on a real hostname only the leading label differs, so the label is replaced.
- * Every other decision — scheme, apex derivation, whether this is a preview deployment — was made
- * by the registry and is left exactly as it made it.
- */
-function deriveSurfaceUrl(anchor: string, subdomain: string, devPort: number): string {
-  const url = new URL(anchor)
-  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-    url.port = String(devPort)
-    url.pathname = '/'
-    return url.origin
-  }
-  const parts = url.hostname.split('.')
-  url.hostname = parts.length > 2 ? [subdomain, ...parts.slice(1)].join('.') : `${subdomain}.${url.hostname}`
-  url.pathname = '/'
-  return url.origin
-}
-
-/** Strip a leading `tessera.` label from a URL the registry built on our own hostname. */
-function stripOwnLabel(value: string): string {
-  const url = new URL(value)
-  const parts = url.hostname.split('.')
-  // Only when it is the SECOND label — `nimbus.tessera.<apex>`. A hostname that merely starts with
-  // `tessera.` is this app's own address and the registry never produces it for another surface.
-  if (parts[1] === TESSERA_SUBDOMAIN && parts.length > 3) {
-    url.hostname = [parts[0], ...parts.slice(2)].join('.')
-  }
-  return url.toString().replace(/\/$/, '') + (url.pathname === '/' ? '' : '')
-}
-
-/**
- * Every CloudsForge base URL the registry knows, for the current environment — corrected.
- *
- * The correction fires only when the page is served from `tessera.<apex>`, which is the one case
- * the registry cannot resolve because it has no entry for this surface.
+ * Passed through, untouched. This used to strip `tessera.` from every resolved URL; see the
+ * header for why, and for what deleted it.
  */
 export function hosts(): CloudsForgeHosts {
-  const raw = cloudsforgeHosts()
-  const host = typeof window === 'undefined' ? '' : window.location.hostname
-  if (!host.startsWith(`${TESSERA_SUBDOMAIN}.`)) return raw
-  return Object.fromEntries(
-    Object.entries(raw).map(([key, value]) => [key, stripOwnLabel(value)]),
-  ) as CloudsForgeHosts
+  return cloudsforgeHosts()
 }
 
 /**
@@ -131,17 +81,15 @@ export function hosts(): CloudsForgeHosts {
  * Call it per request; never cache it in a module constant — the registry resolves from
  * `window.location.hostname`, which a test may change between calls.
  *
- * `worlds-api` is the anchor because it is the surface closest in kind: a Forge Worlds service on
- * its own hostname. Any registry entry would do — the derivation only reads the shape of the URL —
- * and naming one that is conceptually adjacent means a reader checking this against the registry
- * lands somewhere that makes sense.
+ * Straight from the registry now that `tessera` is a surface in it. This used to derive the URL
+ * from `worlds-api` by swapping labels and forcing a port, because there was nothing to read.
  *
- * This never collapses to the empty string. The template's `apiBase()` does, because an SPA and
- * its API usually share an origin behind the gateway; Tessera's client and service are separate
+ * It never collapses to the empty string. The template's `apiBase()` does, because an SPA and its
+ * API usually share an origin behind the gateway; Tessera's client and service are separate
  * surfaces even in production, so the request is always absolute and always cross-origin.
  */
 export function apiBase(): string {
-  return deriveSurfaceUrl(hosts()['worlds-api'], TESSERA_SUBDOMAIN, TESSERA_DEV_PORT)
+  return new URL(hosts().tessera).origin
 }
 
 /**

@@ -23,13 +23,20 @@
  *      a Quarter's cap alone is 10,240 objects (§6.2). Iterating the whole scene per frame to ask
  *      "are you visible" is O(world) work in a loop that must finish in 16 ms, so placements are
  *      bucketed by tile once and only the buckets the viewport touches are read.
- *   2. **It draws the ground into cached chunk canvases.** Ground is static between edits and it
- *      is the majority of the draw calls — a 32×32 Plot is 1,024 ground tiles against a 640-object
- *      cap. Redrawing it per frame spends most of the budget on the part of the picture that did
- *      not change.
+ *   2. **It draws the ground DIRECTLY, and it used to cache it into chunk canvases.** That cache
+ *      is gone, and the reason is the most useful thing the measurement found. Ground is static
+ *      between edits and it is the majority of the draw calls — a 32×32 Plot is 1,024 ground tiles
+ *      against a 640-object cap — so baking 16×16-tile blocks into canvases looked obviously
+ *      right. In world pixels a 16×16 block is **4096×2048**, which is **33.5 MB of backing store
+ *      per chunk**. A 32×32 Plot needs four of them (134 MB); a whole 256×256 ward needs 256 of
+ *      them, which is **8.6 GB**. The first measurement run did not finish: it spent
+ *      three quarters of an hour inside Chromium allocating and discarding canvases, and that is
+ *      what a "cache" that is larger than the thing it caches does. Drawing the tiles is one
+ *      `drawImage` each and the count is bounded by {@link GROUND_MIN_ZOOM}, which is the same
+ *      floor the sprites use and for the same reason.
  *   3. **It has a measured ceiling and degrades ON PURPOSE when it is crossed.** Past
- *      {@link SPRITE_BUDGET} visible objects the renderer stops drawing sprites and draws the
- *      ground plus parcel outlines instead. That is a rendering decision, not a game rule: the
+ *      {@link DRAW_BUDGET} total draws the renderer stops drawing sprites and draws the
+ *      ground alone. That is a rendering decision, not a game rule: the
  *      objects still exist, the server still knows about them, and nothing the user can do is
  *      refused. The alternative — dropping frames on a wide zoom — is the failure the design
  *      feared, arriving silently.
@@ -53,31 +60,71 @@ import {
 import type { Placement, Scene } from './scene.ts'
 
 /**
- * The number of object sprites this renderer will draw in one frame before it switches to the
- * ground-and-outlines view.
+ * Total `drawImage` calls — ground tiles PLUS object sprites — this renderer will make in one
+ * frame before it stops drawing sprites.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
- * 2,400, AND THE NUMBER IS MEASURED. docs/RENDER-BUDGET.md holds the run.
+ * 2,000, AND THE NUMBER IS MEASURED. docs/RENDER-BUDGET.md holds the run and the machine.
  *
- * It is deliberately BELOW the frame budget rather than at it. A measured ceiling used as a
- * threshold means the very first frame that crosses it is already the frame that missed, so the
- * degrade would always arrive one frame late — and one late frame on a zoom gesture is the janky
- * scroll the user actually notices. There is headroom for the rest of the page: React, the shared
- * bar, the wallet strip and whatever the browser is doing on the same thread.
+ * The measurement found the cost per draw to be **7.0 µs** under 4× CPU throttling — the
+ * Lighthouse proxy for the "mid laptop" §13 sets as the bar — and to be flat across a fourfold
+ * range in draw count (7.0 µs at 1,664 draws, 7.1 µs at 6,656). So a 16.6 ms frame affords 2,371
+ * draws, and 2,000 leaves about 15% of the frame for React, the shared bar, the wallet strip and
+ * whatever else is on the same thread.
+ *
+ * It is a TOTAL rather than a sprite budget, and that correction came from the measurement too:
+ * ground is one `drawImage` per tile and there are more tiles than objects — a 32×32 Plot is 1,024
+ * ground tiles against a 640-object cap — so a budget that counted only sprites would be counting
+ * the smaller half.
+ *
+ * The first version of this constant was `SPRITE_BUDGET = 2400`, reasoned rather than measured,
+ * and it was wrong in two ways at once: it counted the wrong thing, and it was set from a guess
+ * about a machine nobody had run.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
-export const SPRITE_BUDGET = 2400
+export const DRAW_BUDGET = 2000
 
 /**
  * Zoom below which object sprites are not drawn at all, whatever the count.
  *
- * At 0.18 a 512-pixel sprite is 92 device pixels and a 256-pixel tile is 46 — a chair is a smudge,
- * and the browser is spending a full bilinear downsample of a 512×512 texture to produce it. The
- * ward map is a different screen with a different job (§6.4: a ward has a page that "says which
- * instance holds whom"), and it should not be reached by zooming the world view out until the
- * world view becomes a bad version of it.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * 0.17, AND THE THIRD DECIMAL PLACE IS LOAD-BEARING.
+ *
+ * This was 0.18, chosen because at that zoom a 512-pixel sprite is 92 device pixels and a chair is
+ * a smudge. The measurement showed that number is WRONG BY A HAIR AND THEREFORE COMPLETELY WRONG:
+ * a 32×32 Plot fits a 1440×900 viewport at zoom **0.1758**, so a floor of 0.18 would have refused
+ * to draw a single object on the one screen the whole tier exists for — a player looking at their
+ * own fully-built Plot, seeing bare ground.
+ *
+ * That is the shape of failure a reasoned constant produces and a measured one does not: nothing
+ * about 0.18 looks wrong until something lands 1.2% below it.
+ *
+ * The coincidence is worth stating because it is not a coincidence. `zoomToFit` for the four tiers
+ * at 1440×900 is 0.352 (Homestead), 0.176 (Plot), 0.088 (Court), 0.044 (Quarter). A floor just
+ * under the Plot's fit means **the Plot is the largest claim you ever see whole**, and a Court or
+ * a Quarter is something you walk rather than something you look at. §6.4 already puts the
+ * overview on a different screen; this is the renderer agreeing with it, in a number.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
-export const SPRITE_MIN_ZOOM = 0.18
+export const SPRITE_MIN_ZOOM = 0.17
+
+/**
+ * Zoom below which the ground is not drawn either.
+ *
+ * The same number as {@link SPRITE_MIN_ZOOM} and for the same reason: below it you are looking at
+ * a MAP rather than at a place, and a map with painterly ground texture on it at 45 pixels a tile
+ * is a map with mush on it.
+ *
+ * It is separately named rather than an alias because the two floors answer different questions
+ * and a future measurement may move one and not the other. docs/RENDER-BUDGET.md records the
+ * measured reason it might: at 0.17 a CONTINUOUS ward's ground alone is about 2,700 tiles in a
+ * 1440×900 viewport, which is over {@link DRAW_BUDGET} before a single object is drawn. The
+ * measurement was taken on isolated parcels, where the ground stops at the claim boundary, so the
+ * numbers below do not yet cover that case — and the fix, when it is measured, is a ground cache
+ * baked at DISPLAY scale rather than world scale. See the header for what happened the last time
+ * ground was cached at world scale.
+ */
+export const GROUND_MIN_ZOOM = 0.17
 
 /** Anything the renderer can draw: a decoded bitmap, or the canvas a chunk was baked into. */
 export type Sprite = CanvasImageSource
@@ -92,28 +139,24 @@ export interface FrameStats {
   readonly sprites: number
   /** Object sprites inside the viewport — equal to `sprites` unless the budget was crossed. */
   readonly visible: number
-  /** Ground chunks blitted. */
-  readonly chunks: number
-  /** Ground chunks baked THIS frame — nonzero only after an edit or a first visit. */
-  readonly baked: number
+  /** Ground tiles drawn. */
+  readonly ground: number
   /** True when the frame drew ground and outlines instead of sprites. */
   readonly degraded: boolean
   /** Wall-clock milliseconds spent inside `draw`. */
   readonly ms: number
 }
 
-/** One ground chunk: `CHUNK` × `CHUNK` tiles baked into a single canvas. */
+/**
+ * Tiles per side of a spatial bucket.
+ *
+ * A BUCKET, not a cache: nothing is baked into a canvas any more (see the header). It exists only
+ * so a frame can ask "which placements are near here" without walking a 65,536-tile world, and 16
+ * is chosen so that a bucket is comfortably smaller than a viewport at the zoom floor — at 0.18 a
+ * 1440×900 viewport spans about 2,400 tiles, or ten buckets, which is few enough that the
+ * per-bucket overhead is nothing and many enough that the cull actually rejects something.
+ */
 const CHUNK = 16
-
-interface BakedChunk {
-  readonly canvas: HTMLCanvasElement | OffscreenCanvas
-  /** World-pixel position of the canvas's top-left corner. */
-  readonly origin: Point
-  readonly width: number
-  readonly height: number
-  /** Every tile in the chunk was resolvable when it was baked. A partial bake is re-baked. */
-  readonly complete: boolean
-}
 
 const chunkKey = (cx: number, cy: number): string => `${cx}:${cy}`
 
@@ -191,18 +234,12 @@ export function visibleChunks(
 }
 
 export interface RendererOptions {
-  /**
-   * Make an offscreen canvas. Injected so the renderer can be measured and tested outside a
-   * document — and so that a browser without `OffscreenCanvas` gets a real `<canvas>` rather than
-   * a renderer that silently stops caching ground.
-   */
-  readonly makeCanvas: (w: number, h: number) => HTMLCanvasElement | OffscreenCanvas
   /** Device pixel ratio the canvas is sized at. Read once; the caller re-creates on change. */
   readonly dpr?: number
   /**
    * Override {@link SPRITE_BUDGET} and {@link SPRITE_MIN_ZOOM}.
    *
-   * These exist for ONE caller: `test/perf/measure.ts`, which is the run that CHOOSES those two
+   * These exist for ONE caller: `test/perf/measure.ts`, which is the run that CHOOSES these
    * constants. A renderer that already enforced them would return a flat line at the budget and
    * would be measuring the guess rather than the machine.
    *
@@ -212,14 +249,15 @@ export interface RendererOptions {
    * `drawn 0`, and the comment read as though the numbers were sound. A knob that must be passed
    * cannot be claimed to have been passed.
    */
-  readonly spriteBudget?: number
+  readonly drawBudget?: number
   readonly spriteMinZoom?: number
+  /** As above, for the ground floor. */
+  readonly groundMinZoom?: number
 }
 
 export class WorldRenderer {
   private readonly ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
   private readonly options: RendererOptions
-  private readonly chunks = new Map<string, BakedChunk>()
   private index: SceneIndex | null = null
   /** Reused across frames so a 10,000-placement scene does not allocate an array per frame. */
   private readonly drawList: Placement[] = []
@@ -232,15 +270,17 @@ export class WorldRenderer {
     this.options = options
   }
 
-  /** Replace the scene. Ground chunks are dropped, because ground is part of the scene. */
+  /**
+   * Replace the scene.
+   *
+   * There is no `invalidate(tile)` any more and there is nothing to invalidate: ground is drawn
+   * from the scene every frame, so an edit is visible on the next one. That is the second thing
+   * deleting the chunk cache bought — the first version of this class had a cache-invalidation
+   * method, which is a thing that can be forgotten at exactly one call site and produce a world
+   * that does not change when you change it.
+   */
   setScene(scene: Scene): void {
     this.index = new SceneIndex(scene)
-    this.chunks.clear()
-  }
-
-  /** Drop one chunk's bake — what an edit to a single tile costs. */
-  invalidate(tile: Tile): void {
-    this.chunks.delete(chunkKey(Math.floor(tile.tx / CHUNK), Math.floor(tile.ty / CHUNK)))
   }
 
   /**
@@ -267,29 +307,38 @@ export class WorldRenderer {
 
     if (!index) {
       ctx.restore()
-      return { sprites: 0, visible: 0, chunks: 0, baked: 0, degraded: false, ms: now() - started }
+      return { sprites: 0, visible: 0, ground: 0, degraded: false, ms: now() - started }
     }
 
     const box = visibleChunks(camera, viewport)
-    let blitted = 0
-    let baked = 0
+    const groundFloor = this.options.groundMinZoom ?? GROUND_MIN_ZOOM
+    const groundDrawn = camera.zoom >= groundFloor
+    let ground = 0
 
-    /* ── ground, from the chunk cache ──────────────────────────────────────────────────────── */
+    /* ── ground, one drawImage per visible tile ────────────────────────────────────────────── */
 
-    for (let cy = box.cy0; cy <= box.cy1; cy += 1) {
-      for (let cx = box.cx0; cx <= box.cx1; cx += 1) {
-        const chunk = this.chunkFor(cx, cy, index, sprites)
-        if (!chunk) continue
-        if (!chunk.complete) baked += 1
-        const at = worldToScreen(chunk.origin, camera, viewport)
-        ctx.drawImage(
-          chunk.canvas,
-          at.x,
-          at.y,
-          chunk.width * camera.zoom,
-          chunk.height * camera.zoom,
-        )
-        blitted += 1
+    if (groundDrawn) {
+      const w = TILE_W * camera.zoom
+      const h = TILE_H * camera.zoom
+      for (let cy = box.cy0; cy <= box.cy1; cy += 1) {
+        for (let cx = box.cx0; cx <= box.cx1; cx += 1) {
+          const bucket = index.groundIn(cx, cy)
+          for (let i = 0; i < bucket.length; i += 1) {
+            const tile = bucket[i] as { tile: Tile; sprite: string }
+            const sprite = sprites.get(tile.sprite)
+            if (!sprite) continue
+            const world = tileToWorld(tile.tile)
+            const at = worldToScreen({ x: world.x - TILE_W / 2, y: world.y - TILE_H / 2 }, camera, viewport)
+            // Per-tile cull. The bucket cull is coarse — a bucket is 16 tiles across and the
+            // viewport's tile-space bounding box is a rectangle around a diamond — so most of the
+            // rejection happens here, on a comparison rather than on a draw call.
+            if (at.x + w < 0 || at.y + h < 0 || at.x > viewport.width || at.y > viewport.height) {
+              continue
+            }
+            ctx.drawImage(sprite, at.x, at.y, w, h)
+            ground += 1
+          }
+        }
       }
     }
 
@@ -305,9 +354,12 @@ export class WorldRenderer {
     }
     const visible = list.length
 
-    const budget = this.options.spriteBudget ?? SPRITE_BUDGET
+    // The budget is spent on ground FIRST and objects second, because ground is the floor: an
+    // object hovering over nothing is a worse picture than a floor with nothing on it, and the
+    // ground count is already bounded by the zoom floor while the object count is not.
+    const budget = this.options.drawBudget ?? DRAW_BUDGET
     const minZoom = this.options.spriteMinZoom ?? SPRITE_MIN_ZOOM
-    const degraded = camera.zoom < minZoom || visible > budget
+    const degraded = camera.zoom < minZoom || ground + visible > budget
     let drawn = 0
     if (!degraded) {
       // Sorting a reused array in place. `sort` is comparison-based and O(n log n); at the
@@ -341,7 +393,7 @@ export class WorldRenderer {
     }
 
     ctx.restore()
-    return { sprites: drawn, visible, chunks: blitted, baked, degraded, ms: now() - started }
+    return { sprites: drawn, visible, ground, degraded, ms: now() - started }
   }
 
   /**
@@ -356,56 +408,6 @@ export class WorldRenderer {
     return worldToTile(screenToWorld(screen, camera, viewport))
   }
 
-  private chunkFor(
-    cx: number,
-    cy: number,
-    index: SceneIndex,
-    sprites: SpriteSource,
-  ): BakedChunk | null {
-    const key = chunkKey(cx, cy)
-    const cached = this.chunks.get(key)
-    if (cached?.complete) return cached
-
-    const tiles = index.groundIn(cx, cy)
-    if (tiles.length === 0) return null
-
-    // World-pixel bounds of a CHUNK×CHUNK block of tiles. The block is a diamond, so its bounding
-    // box is CHUNK*TILE_W wide and CHUNK*TILE_H tall, with its left corner at the tile (tx0, ty1).
-    const tx0 = cx * CHUNK
-    const ty0 = cy * CHUNK
-    const width = CHUNK * TILE_W
-    const height = CHUNK * TILE_H
-    const origin: Point = {
-      x: tileToWorld({ tx: tx0, ty: ty0 + CHUNK - 1 }).x - TILE_W / 2,
-      y: tileToWorld({ tx: tx0, ty: ty0 }).y - TILE_H / 2,
-    }
-
-    const canvas = this.options.makeCanvas(width, height)
-    const cctx = canvas.getContext('2d') as
-      | CanvasRenderingContext2D
-      | OffscreenCanvasRenderingContext2D
-      | null
-    if (!cctx) return null
-
-    let complete = true
-    for (const g of tiles) {
-      const sprite = sprites.get(g.sprite)
-      if (!sprite) {
-        complete = false
-        continue
-      }
-      const world = tileToWorld(g.tile)
-      cctx.drawImage(sprite, world.x - origin.x - TILE_W / 2, world.y - origin.y - TILE_H / 2)
-    }
-
-    const chunk: BakedChunk = { canvas, origin, width, height, complete }
-    // An INCOMPLETE chunk is cached too, so a frame drawn while sprites are still decoding shows
-    // the ground it has rather than nothing — and `complete: false` makes the next frame re-bake
-    // it. Caching only complete chunks would re-bake every chunk every frame until the last byte
-    // arrived, which is the worst moment to be doing the most work.
-    this.chunks.set(key, chunk)
-    return chunk
-  }
 }
 
 /** `performance.now()` where it exists, `Date.now()` where it does not. */

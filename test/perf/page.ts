@@ -5,10 +5,10 @@
  * look fast — if `WorldRenderer.draw` is slow, this reports it slow. That is the whole point:
  * a benchmark of a benchmark measures the benchmark.
  *
- * The one deliberate difference from production: {@link SPRITE_BUDGET} and {@link SPRITE_MIN_ZOOM}
- * are the thresholds this measurement EXISTS to choose, so the scenarios drive the renderer with
- * degradation disabled. Measuring a renderer that refuses to draw past its budget would produce a
- * flat line at the budget and prove nothing about where the budget belongs.
+ * The one deliberate difference from production: `DRAW_BUDGET`, `SPRITE_MIN_ZOOM` and
+ * `GROUND_MIN_ZOOM` are the thresholds this measurement EXISTS to choose, so the scenarios drive
+ * the renderer with degradation disabled. Measuring a renderer that refuses to draw past its
+ * budget would produce a flat line at the budget and prove nothing about where the budget belongs.
  */
 import { WorldRenderer } from '../../src/render/renderer.ts'
 import { zoomToFit } from '../../src/render/iso.ts'
@@ -20,6 +20,8 @@ interface ScenarioIn {
   objects: number
   zoom: 'fit' | number
   textures?: number
+  frames: number
+  warmup: number
 }
 
 const canvas = document.createElement('canvas')
@@ -149,17 +151,15 @@ function buildScene(side: number, objects: number, textureCount: number): Scene 
 
 /* ── the run ────────────────────────────────────────────────────────────────────────────────── */
 
-const FRAMES = 90
 /**
- * Frames discarded before sampling starts.
+ * Frame counts arrive from the harness.
  *
- * Thirty rather than a handful, because the first pass over a scene pays three one-off costs that
- * are not steady state and are large: uploading every texture to the GPU, baking every visible
- * ground chunk, and growing the draw list array to its final length. The first version of this
- * file discarded twenty and still reported a p95 of 415 ms against a p50 of 14 — a distribution
- * that is not a frame time at all, it is a frame time with a texture upload in the tail.
+ * The warmup exists because the first pass over a scene pays two one-off costs that are not steady
+ * state and are large: uploading every texture to the GPU, and growing the draw list to its final
+ * length. An early version discarded twenty frames and still reported a p95 of 415 ms against a
+ * p50 of 14 — a distribution that is not a frame time at all, it is a frame time with a texture
+ * upload in its tail.
  */
-const WARMUP = 30
 
 async function run(scenario: ScenarioIn): Promise<Record<string, number | boolean>> {
   const dpr = window.devicePixelRatio
@@ -180,18 +180,12 @@ async function run(scenario: ScenarioIn): Promise<Record<string, number | boolea
   const sceneMs = performance.now() - sceneStarted
 
   const renderer = new WorldRenderer(ctx as CanvasRenderingContext2D, {
-    makeCanvas: (w, h) => {
-      const c = document.createElement('canvas')
-      c.width = w
-      c.height = h
-      return c
-    },
     dpr,
-    // Degradation OFF, actually rather than in a comment. See RendererOptions.spriteBudget for
-    // what the first version of this file did instead, and why the knob is passed rather than
-    // asserted.
-    spriteBudget: Number.POSITIVE_INFINITY,
+    // Degradation OFF, actually rather than in a comment. See RendererOptions.drawBudget for what
+    // the first version of this file did instead, and why the knob is passed rather than asserted.
+    drawBudget: Number.POSITIVE_INFINITY,
     spriteMinZoom: 0,
+    groundMinZoom: 0,
   })
   renderer.setScene(scene)
 
@@ -213,6 +207,7 @@ async function run(scenario: ScenarioIn): Promise<Record<string, number | boolea
   const samples: number[] = []
   let visible = 0
   let drawn = 0
+  let ground = 0
   let degraded = false
 
   // DEGRADATION IS DISABLED for the measurement, by driving `draw` at a camera the renderer would
@@ -220,32 +215,59 @@ async function run(scenario: ScenarioIn): Promise<Record<string, number | boolea
   // choose, so measuring a renderer that already enforces them measures the guess.
   const forced = { ...camera, zoom: Math.max(zoom, 1e-6) }
 
-  for (let i = 0; i < FRAMES + WARMUP; i += 1) {
-    await new Promise<void>((r) => requestAnimationFrame(() => r()))
+  /*
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   * TWO NUMBERS, BECAUSE THEY ANSWER TWO DIFFERENT QUESTIONS AND CONFLATING THEM IS THE CLASSIC
+   * WAY TO MIS-MEASURE A CANVAS.
+   *
+   *   `cpuMs`   — wall clock inside `renderer.draw`. This is JavaScript issuing draw calls, and
+   *               it is what the sprite budget is really a budget of.
+   *   `frameMs` — the interval between PRESENTED frames, from requestAnimationFrame's own
+   *               timestamps. This is the number "does it hold 60 fps" is a question about, and
+   *               it includes rasterisation and compositing that `cpuMs` cannot see.
+   *
+   * An earlier version forced a flush with `getImageData(0, 0, 1, 1)` after every draw, on the
+   * reasoning that otherwise the benchmark measures how fast JavaScript can ENQUEUE work. That
+   * reasoning is right about `cpuMs` and it fixes it the wrong way: a one-pixel readback is a full
+   * pipeline stall, so it replaced "too optimistic" with "measuring a stall nobody would perform".
+   * The rAF interval needs no flush at all — a frame is presented or it is not.
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   */
+  const intervals: number[] = []
+  let last = 0
+  for (let i = 0; i < scenario.frames + scenario.warmup; i += 1) {
+    const at = await new Promise<number>((r) => requestAnimationFrame((t) => r(t)))
+    if (last !== 0 && i >= scenario.warmup) intervals.push(at - last)
+    last = at
     const t0 = performance.now()
     const stats = renderer.draw(forced, viewport, sprites)
-    // Force the frame to actually land rather than sit in the command queue: reading one pixel is
-    // a synchronous flush of everything queued. Without it a Canvas 2D benchmark measures how fast
-    // JavaScript can ENQUEUE draw calls, which is not the number anybody cares about.
-    ;(ctx as CanvasRenderingContext2D).getImageData(0, 0, 1, 1)
     const ms = performance.now() - t0
-    if (i >= WARMUP) samples.push(ms)
+    if (i >= scenario.warmup) samples.push(ms)
     visible = stats.visible
     drawn = stats.sprites
+    ground = stats.ground
     degraded = stats.degraded
   }
+  intervals.sort((a, b) => a - b)
 
   samples.sort((a, b) => a - b)
-  const at = (q: number): number => samples[Math.min(samples.length - 1, Math.floor(q * samples.length))] as number
-  const p50 = at(0.5)
+  const quantile = (xs: number[], q: number): number =>
+    xs.length === 0 ? 0 : (xs[Math.min(xs.length - 1, Math.floor(q * xs.length))] as number)
+  const p50 = quantile(samples, 0.5)
+  const framep50 = quantile(intervals, 0.5)
   return {
     zoomUsed: zoom,
     visible,
     drawn,
+    ground,
+    // JavaScript issuing draw calls.
     p50,
-    p95: at(0.95),
-    worst: samples[samples.length - 1] as number,
-    fps: p50 > 0 ? 1000 / p50 : 0,
+    p95: quantile(samples, 0.95),
+    worst: samples[samples.length - 1] ?? 0,
+    // Presented frames. This is the one the design's "60 fps" is about.
+    framep50,
+    framep95: quantile(intervals, 0.95),
+    fps: framep50 > 0 ? 1000 / framep50 : 0,
     degraded,
     loadMs,
     sceneBuildMs: sceneMs,

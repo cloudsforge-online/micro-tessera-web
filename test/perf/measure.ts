@@ -138,6 +138,17 @@ const VIEWPORTS = [
   { name: '390x844', width: 390, height: 844, dpr: 3 },
 ] as const
 
+/**
+ * Frames sampled per scenario, and frames discarded first.
+ *
+ * Sent from here rather than fixed in the page so the heavy scenarios do not make the run
+ * unbounded: at 40,960 objects and 4× CPU throttling a frame is most of a second, and 120 of them
+ * is two minutes for ONE cell of a 28-cell grid. The first run was killed at 45 minutes for
+ * exactly that reason — and for a second one, recorded in the renderer's header.
+ */
+const FRAMES = 40
+const WARMUP = 15
+
 /* ── serving the bundle and the real bytes ─────────────────────────────────────────────────── */
 
 const MIME: Record<string, string> = {
@@ -189,9 +200,12 @@ interface Result extends Scenario {
   readonly zoomUsed: number
   readonly visible: number
   readonly drawn: number
+  readonly ground: number
   readonly p50: number
   readonly p95: number
   readonly worst: number
+  readonly framep50: number
+  readonly framep95: number
   readonly fps: number
   readonly degraded: boolean
   readonly loadMs: number
@@ -245,7 +259,31 @@ async function main(): Promise<void> {
   if (address === null || typeof address === 'string') throw new Error('no port')
   const origin = `http://127.0.0.1:${address.port}`
 
-  const browser = await chromium.launch({ executablePath: exe, headless: true })
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  // THE GPU FLAGS, AND THE CHECK THAT THEY WORKED.
+  //
+  // Headless Chromium rasterises on the CPU by default, through SwiftShader. A Canvas 2D
+  // measurement taken that way is a measurement of a software rasteriser: the first complete run
+  // of this harness reported 47 ms for 230 draw calls, which is 200 microseconds each and is not a
+  // number any GPU produces. It is fill-rate bound, and it describes a machine nobody plays on.
+  //
+  // So the GPU is requested — and then VERIFIED below by reading WebGL's unmasked renderer string
+  // out of the page. Requesting a flag and assuming it took is exactly the shape of check this
+  // estate keeps having to delete; the renderer string is recorded in the output either way, so a
+  // reader can see which machine produced the numbers rather than being told.
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  const browser = await chromium.launch({
+    executablePath: exe,
+    headless: true,
+    args: [
+      '--enable-gpu',
+      '--ignore-gpu-blocklist',
+      '--enable-gpu-rasterization',
+      '--enable-zero-copy',
+      process.platform === 'darwin' ? '--use-angle=metal' : '--use-angle=gl',
+    ],
+  })
+  let rasteriser = 'unknown'
   const results: Result[] = []
 
   try {
@@ -270,10 +308,22 @@ async function main(): Promise<void> {
         await tab.goto(origin, { waitUntil: 'load' })
         await tab.waitForFunction('window.__tesseraReady === true', undefined, { timeout: 120_000 })
 
+        // Read the ACTUAL rasteriser, once per context. `SwiftShader` or `llvmpipe` here means
+        // every number below describes a CPU, and the output says so rather than implying a GPU.
+        rasteriser = (await tab.evaluate(() => {
+          const probe = document.createElement('canvas').getContext('webgl')
+          if (!probe) return 'no webgl context'
+          const ext = probe.getExtension('WEBGL_debug_renderer_info')
+          return ext
+            ? String(probe.getParameter(ext.UNMASKED_RENDERER_WEBGL))
+            : String(probe.getParameter(probe.RENDERER))
+        })) as string
+        process.stdout.write(`rasteriser: ${rasteriser}\n`)
+
         for (const scenario of SCENARIOS) {
           const measured = (await tab.evaluate(
             (s) => (window as unknown as TesseraWindow).__tesseraRun(s),
-            scenario as unknown as Record<string, unknown>,
+            { ...scenario, frames: FRAMES, warmup: WARMUP } as unknown as Record<string, unknown>,
           )) as Omit<Result, keyof Scenario | 'viewport' | 'dpr' | 'throttle'>
           results.push({
             ...scenario,
@@ -284,8 +334,9 @@ async function main(): Promise<void> {
           })
           process.stdout.write(
             `${throttle}x ${viewport.name} ${scenario.name.padEnd(26)} ` +
-              `p50 ${measured.p50.toFixed(2)}ms  p95 ${measured.p95.toFixed(2)}ms  ` +
-              `${measured.fps.toFixed(0)} fps  drawn ${measured.drawn}` +
+              `cpu ${measured.p50.toFixed(1)}/${measured.p95.toFixed(1)}ms  ` +
+              `frame ${measured.framep50.toFixed(1)}/${measured.framep95.toFixed(1)}ms  ` +
+              `${measured.fps.toFixed(0)} fps  sprites ${measured.drawn} ground ${measured.ground}` +
               `${measured.degraded ? '  [DEGRADED]' : ''}\n`,
           )
         }
@@ -314,6 +365,9 @@ async function main(): Promise<void> {
         cores: cpus().length,
         memGB: Math.round(totalmem() / 1e9),
         chrome: exe,
+        // The single most important line in this file for reading the numbers below.
+        rasteriser,
+        softwareRaster: /swiftshader|llvmpipe|software/i.test(rasteriser),
       },
       spriteCount: { objects: sprites.objects.length, tiles: sprites.tiles.length },
       results,

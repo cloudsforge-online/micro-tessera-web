@@ -65,15 +65,7 @@ export function WorldCanvas({ scene, sprites, side, centre, label }: WorldCanvas
     canvas.style.width = `${width}px`
     canvas.style.height = `${height}px`
 
-    const renderer = new WorldRenderer(ctx, {
-      makeCanvas: (w, h) => {
-        const c = document.createElement('canvas')
-        c.width = w
-        c.height = h
-        return c
-      },
-      dpr,
-    })
+    const renderer = new WorldRenderer(ctx, { dpr })
     renderer.setScene(scene)
     rendererRef.current = renderer
 

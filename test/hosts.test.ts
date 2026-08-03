@@ -2,20 +2,24 @@
  * Host resolution, including the registry defect this client corrects.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
- * THE INTERESTING TEST IN THIS FILE ASSERTS THAT THE REGISTRY IS WRONG.
+ * THE TEST THAT USED TO BE HERE ASSERTED THAT THE REGISTRY WAS WRONG, AND IT FIRED.
  *
- * `@cloudsforge/ui`'s surface registry has no `tessera` key, so `cloudsforgeHosts()` cannot
- * recognise `tessera.<apex>` as a known subdomain and leaves it in place — which is correct for a
- * preview deployment and wrong for this app in production. Served from `https://tessera.<apex>`
- * it resolves `nimbus.tessera.<apex>`, `pay.tessera.<apex>` and `lantern.tessera.<apex>`: three
- * hostnames that do not exist, one of which is sign-in.
+ * `@cloudsforge/ui`'s surface registry had no `tessera` key when this client was written, so
+ * `cloudsforgeHosts()` could not recognise `tessera.<apex>` as a known subdomain and left it in
+ * place — resolving `nimbus.tessera.<apex>`, `pay.tessera.<apex>` and `lantern.tessera.<apex>`:
+ * three hostnames that do not exist, one of which is sign-in. `src/lib/hosts.ts` corrected it, and
+ * this file asserted the UNCORRECTED answer, deliberately, so that:
  *
- * Asserting the WRONG answer, from the registry, is what makes the correction in `src/lib/hosts.ts`
- * a correction rather than a guess — and it is what turns this repository red on the day
- * `micro-ui` gains its `tessera` row, which is exactly when that correction must be deleted. A
- * test that only asserted the corrected answer would go on passing after the workaround became a
- * bug, which is how `micro-emberkin-web` carried four dead exports through a rewire that happened
- * in two halves months apart.
+ *   - the correction was demonstrably a correction rather than a guess, and
+ *   - this repository went red the moment `micro-ui` gained its row — which is exactly when the
+ *     correction had to be deleted.
+ *
+ * It went red, mid-build, while a sibling agent was adding the row. The workaround was deleted in
+ * the same change. What replaces it is the check the registry's own comment asks for: **the
+ * registry and the service must agree about the port**, asserted against `TESSERA_DEV_PORT`, which
+ * is read from `tessera/src/env.ts` rather than from the registry — so the two sides of the
+ * comparison come from different places, which is the whole difference between this and the
+ * assertion that compared a URL with a copy of itself.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import assert from 'node:assert/strict'
@@ -48,14 +52,23 @@ function at<T>(url: string, body: () => T): T {
 
 test('on localhost the service resolves to the port it binds', () => {
   const base = at('http://localhost:5172/', apiBase)
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  // THE TWO SIDES COME FROM DIFFERENT PLACES, WHICH IS THE POINT.
+  //
+  // `base` is the REGISTRY's answer, resolved through `cloudsforgeHosts()`. `TESSERA_DEV_PORT` is
+  // the SERVICE's number, transcribed from `tessera/src/env.ts` where `DEFAULT_PORT = 4022` is
+  // declared and argued. If either moves without the other, this fails.
+  //
+  // Comparing the registry against itself is the defect this estate found tonight in the SSO
+  // callback pin: the client posted to `/auth/exchange`, a route identity has never served, and
+  // the test compared the URL with a copy of itself so it could never have failed.
+  // ══════════════════════════════════════════════════════════════════════════════════════════
   assert.equal(
     base,
     `http://localhost:${TESSERA_DEV_PORT}`,
-    'the client does not address the port micro-tessera binds',
+    'the registry and micro-tessera disagree about which port the service binds',
   )
-  // 4022, and the number is the service's own. `tessera/src/env.ts` declares
-  // `export const DEFAULT_PORT = 4022`.
-  assert.equal(TESSERA_DEV_PORT, 4022)
+  assert.equal(TESSERA_DEV_PORT, 4022, 'the service no longer binds 4022')
 })
 
 test('on the apex the service resolves to its own subdomain', () => {
@@ -63,40 +76,33 @@ test('on the apex the service resolves to its own subdomain', () => {
   assert.equal(base, 'https://tessera.cloudsforge.online')
 })
 
-test('THE REGISTRY IS WRONG FROM tessera.<apex>, and this records it', () => {
-  const raw = at('https://tessera.cloudsforge.online/', cloudsforgeHosts)
+test('served from tessera.<apex>, sign-in addresses a hostname that exists', () => {
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  // THE DEFECT THIS FILE WAS BUILT AROUND, NOW ASSERTED AS FIXED RATHER THAN AS PRESENT.
+  //
+  // `tessera` is in KNOWN_SUBS, so the apex is derived by stripping it and every other surface
+  // resolves on the apex. Before the registry row these three were `nimbus.tessera.<apex>` and
+  // friends — hostnames that do not exist, one of which is where every Sign in button leads.
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  const resolved = at('https://tessera.cloudsforge.online/', hosts)
+  assert.equal(resolved.nimbus, 'https://nimbus.cloudsforge.online')
+  assert.equal(resolved.pay, 'https://pay.cloudsforge.online')
+  assert.equal(resolved.lantern, 'https://lantern.cloudsforge.online')
 
-  // The uncorrected registry answer. When `micro-ui` gains a `tessera` row these three become
-  // `https://nimbus.cloudsforge.online` and this test goes red — which is the signal to delete
-  // `stripOwnLabel` from src/lib/hosts.ts, not to update this expectation.
-  assert.equal(
-    raw.nimbus,
-    'https://nimbus.tessera.cloudsforge.online',
-    'micro-ui now carries a `tessera` surface — delete the correction in src/lib/hosts.ts',
-  )
-  assert.equal(raw.pay, 'https://pay.tessera.cloudsforge.online')
-  assert.equal(raw.lantern, 'https://lantern.tessera.cloudsforge.online')
+  // And `hosts()` is now a passthrough, which is what "the workaround is gone" means mechanically.
+  assert.deepEqual(resolved, at('https://tessera.cloudsforge.online/', cloudsforgeHosts))
 })
 
-test('this client corrects it, so sign-in addresses a hostname that exists', () => {
-  const corrected = at('https://tessera.cloudsforge.online/', hosts)
-  assert.equal(corrected.nimbus, 'https://nimbus.cloudsforge.online')
-  assert.equal(corrected.pay, 'https://pay.cloudsforge.online')
-  assert.equal(corrected.lantern, 'https://lantern.cloudsforge.online')
-})
-
-test('the correction is a no-op everywhere else', () => {
-  // Localhost.
-  const local = at('http://localhost:5172/', hosts)
-  assert.equal(local.nimbus, at('http://localhost:5172/', cloudsforgeHosts).nimbus)
-
-  // A preview deployment on an unknown apex, which the registry deliberately leaves alone.
-  const preview = at('https://pr-42.example.dev/', hosts)
-  assert.equal(preview.nimbus, at('https://pr-42.example.dev/', cloudsforgeHosts).nimbus)
-
-  // Another surface's hostname — the correction must not fire on somebody else's page.
-  const market = at('https://market.cloudsforge.online/', hosts)
-  assert.equal(market.nimbus, 'https://nimbus.cloudsforge.online')
+test('every other environment resolves as the registry says, untouched', () => {
+  for (const url of [
+    'http://localhost:5172/',
+    // A preview deployment on an unknown apex, which the registry deliberately leaves alone.
+    'https://pr-42.example.dev/',
+    // Another surface's hostname — nothing here may fire on somebody else's page.
+    'https://market.cloudsforge.online/',
+  ]) {
+    assert.deepEqual(at(url, hosts), at(url, cloudsforgeHosts), `hosts() rewrote something at ${url}`)
+  }
 })
 
 test('sprites are same-origin, under a path with no provider in it', () => {

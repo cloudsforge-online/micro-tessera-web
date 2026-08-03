@@ -21,7 +21,14 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getParcel, listWards, recordVisit, type Parcel, type WirePlacement } from '../lib/tessera.ts'
+import {
+  getParcel,
+  listWardParcels,
+  listWards,
+  recordVisit,
+  type Parcel,
+  type WirePlacement,
+} from '../lib/tessera.ts'
 import { SpriteCache } from '../lib/sprites.ts'
 import { isArchetype, groundFor } from '../render/terrain.ts'
 import type { Placement, Scene } from '../render/scene.ts'
@@ -64,11 +71,11 @@ function Arrivals({
   onOpen: (parcelId: string) => void
 }) {
   const [wardId, setWardId] = useState(wards[0]?.id ?? '')
+  // A static import. This was a dynamic one, which vite reported as pointless — the module is
+  // statically imported by six other pages, so it can never move into a chunk of its own and the
+  // `import()` bought a promise and nothing else.
   const parcels = useAsync(
-    async () => {
-      const { listWardParcels } = await import('../lib/tessera.ts')
-      return listWardParcels(wardId)
-    },
+    () => listWardParcels(wardId),
     [wardId],
     'The parcels in this ward could not be read.',
   )
