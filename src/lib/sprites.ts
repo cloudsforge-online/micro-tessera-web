@@ -21,8 +21,16 @@
  * players fired. Firing all of those at the network at once on a phone produces a request queue
  * the browser services in an order nobody chose, so the ground arrives last and the world is a
  * field of floating furniture for two seconds. Six at a time, ground first.
+ *
+ * ── AND A URL IS NEVER CONSTRUCTED HERE ───────────────────────────────────────────────────────
+ *
+ * This file used to build one — `${assetBase()}/${path}.png` — and that one line rendered the
+ * whole world as holes against a mount that was complete and validated, because every file the
+ * asset pipeline materialises carries its delivered size in its name and this client's identities
+ * do not. `lib/asset-set.ts` carries the full account. The identity is asked for; the mount's own
+ * receipt says where the bytes are.
  */
-import { assetBase } from './hosts.ts'
+import { loadAssetSet, type AssetSet } from './asset-set.ts'
 
 /** Decoded bitmaps by stable asset path — `objects/seating-stool`, `tiles/ashfield-ground-a`. */
 export class SpriteCache {
@@ -30,9 +38,31 @@ export class SpriteCache {
   private readonly failed = new Set<string>()
   private readonly inflight = new Map<string, Promise<void>>()
   private readonly onChange: () => void
+  /** Read once per cache, on the first {@link load}. A ward must not re-fetch the receipt. */
+  private receipt: Promise<AssetSet> | undefined
+  private resolved: AssetSet | undefined
 
   constructor(onChange: () => void) {
     this.onChange = onChange
+  }
+
+  /**
+   * What the mount is serving, once something has asked for a sprite.
+   *
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   * THIS IS HERE BECAUSE "NO ART MOUNTED" AND "THE NAMES DISAGREE" LOOK IDENTICAL OTHERWISE.
+   *
+   * They are completely different faults with completely different owners — the first is a deploy
+   * that has not mapped the volume, the second is this bundle and `micro-tessera-assets` having
+   * forked their idea of what an asset is called — and for one night the estate could not tell
+   * them apart, because both arrive as a screen full of nothing while every check is green.
+   *
+   * So the state is readable, `WorldCanvas` prints it beside the list of holes, and a person
+   * looking at an empty world is told which of the two it is.
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   */
+  get set(): AssetSet | undefined {
+    return this.resolved
   }
 
   /** What the renderer calls, once per sprite per frame. Never async, never throws. */
@@ -61,23 +91,44 @@ export class SpriteCache {
       (p) => !this.bitmaps.has(p) && !this.failed.has(p) && !this.inflight.has(p),
     )
     if (wanted.length === 0) return
+
+    // Before any sprite request, and exactly once: there is nowhere to fetch from until the mount
+    // has said what it holds. With no set mounted every wanted path is a hole with a name — the
+    // same outcome as before, reached in one request rather than in several hundred 404s.
+    this.receipt ??= loadAssetSet()
+    const set = (this.resolved = await this.receipt)
+    if (set.state === 'absent') {
+      for (const path of wanted) this.failed.add(path)
+      this.onChange()
+      return
+    }
+
     const queue = [...wanted]
     const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
       for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-        await this.fetchOne(next)
+        await this.fetchOne(next, set.urlOf(next))
       }
     })
     await Promise.all(workers)
     this.onChange()
   }
 
-  private async fetchOne(path: string): Promise<void> {
+  /**
+   * `url` is `undefined` when the mounted set does not name this identity.
+   *
+   * That is the divergence case, and it costs no request: the receipt has already said what the
+   * mount holds, so asking for a name it does not hold could only produce a 404. It is recorded
+   * as a hole exactly like a byte that would not decode, because to a renderer they are the same
+   * thing — and `WorldCanvas` says which set was consulted, so the two are told apart on screen.
+   */
+  private async fetchOne(path: string, url: string | undefined): Promise<void> {
+    if (url === undefined) {
+      this.failed.add(path)
+      return
+    }
     const task = (async (): Promise<void> => {
       try {
-        // `.png` is appended here rather than stored in every placement, so the world's data
-        // carries an identity and not a file extension. If the pipeline ever emits webp, this is
-        // the one line that changes.
-        const res = await fetch(`${assetBase()}/${path}.png`)
+        const res = await fetch(url)
         if (!res.ok) {
           this.failed.add(path)
           return

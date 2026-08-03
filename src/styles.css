@@ -532,6 +532,7 @@ body {
 .tw-world__canvas { inline-size: 100%; block-size: 100%; touch-action: none; cursor: grab; }
 .tw-world__canvas:active { cursor: grabbing; }
 .tw-world__stats { font-size: 0.85rem; opacity: 0.8; margin: 0.5rem 0 0; }
+.tw-world__ground { font-size: 0.85rem; opacity: 0.8; margin: 0.25rem 0 0; }
 .tw-world__missing { font-size: 0.85rem; margin: 0.25rem 0 0; }
 
 .tw-places { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.5rem;

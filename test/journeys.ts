@@ -178,6 +178,36 @@ export const SCENARIOS: readonly Scenario[] = [
       '`missing` lists the paths. There is no fallback asset anywhere for a service to serve.',
   },
   {
+    id: 'BJ-TES-37',
+    what:
+      'a parcel standing on a MOUNTED asset set is drawn on ground, at the filenames the set ' +
+      'itself gives for the identities this client asks for — the client spelled those filenames ' +
+      'once, got every one of them wrong, and rendered a complete validated 392-asset mount as a ' +
+      'world of holes with nothing red anywhere',
+    screen: 'world',
+    asserts: 'presentation',
+    tier: 'T1',
+    gate: true,
+    noServerRule:
+      'the asset path crosses no service at all. micro-tessera serves no sprite and knows no ' +
+      'filename: the identity comes from src/render/terrain.ts and the file it resolves to comes ' +
+      "from the mount's own SET.json, which micro-tessera-assets' materialise.py wrote.",
+  },
+  {
+    id: 'BJ-TES-38',
+    what:
+      'a world with no art in it says WHICH of the two causes it is — no set mounted, or a set ' +
+      'mounted whose names this client cannot resolve — because they look identical on screen, ' +
+      'have different owners, and the estate spent a night unable to tell them apart',
+    screen: 'world',
+    asserts: 'presentation',
+    tier: 'T1',
+    noServerRule:
+      'both states are properties of the mount and of this bundle. The deploy maps the volume ' +
+      'and micro-tessera-assets names the assets; micro-tessera is not in the path and has no ' +
+      'route that could report either one.',
+  },
+  {
     id: 'BJ-TES-04',
     what:
       'leaving a parcel records exactly one visit, carrying a dwell measured from the clock and ' +

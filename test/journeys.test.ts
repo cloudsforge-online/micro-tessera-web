@@ -30,6 +30,7 @@ import { createElement as h, type ReactElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 
 import { withScreen, type Routes, type Screen as Rendered } from './dom.ts'
+import { assetSetAvailable, receiptFromManifest } from './asset-set.ts'
 import {
   LISTING,
   OBJECT,
@@ -80,9 +81,32 @@ const WORLD = { canvas2d: true, viewport: { width: 1440, height: 900 } } as cons
 /** Ground and object sprites 404, which is what a checkout with no assets served really does. */
 const NO_SPRITES: Routes = { 'GET /world-assets/': { status: 404 } }
 
+/**
+ * The real materialised set, served the way an nginx mount serves it.
+ *
+ * The receipt at `SET.json`, a 200 for exactly the paths it names, and a 404 for everything else
+ * — which is `tessera-web/nginx.conf:73`, `try_files $uri =404` with no fallback. Both sides come
+ * from `micro-tessera-assets`' own files, so nothing here is a third spelling of the convention.
+ */
+function mountedSet(): Routes {
+  const receipt = receiptFromManifest()
+  const served = new Set(receipt.files.map((f) => f.path))
+  return {
+    'GET /world-assets/': (wire) => {
+      const path = wire.path.replace(/^\/world-assets\//, '')
+      if (path === 'SET.json') return { body: receipt }
+      return served.has(path) ? { body: {} } : { status: 404 }
+    },
+  }
+}
+
 /** The live region beside the canvas — the only textual account of what the renderer decided. */
 const frameLine = (s: Rendered): string =>
   s.textOf(s.document.querySelector('.tw-world__stats'))
+
+/** The other one: how much floor the renderer actually put down. Zero is a world of holes. */
+const groundLine = (s: Rendered): string =>
+  s.textOf(s.document.querySelector('.tw-world__ground'))
 
 /**
  * One table row, read as `{ column header → cell }`.
@@ -212,6 +236,133 @@ describe('BJ-TES — the world', () => {
         `no unresolved sprite was named: ${text}`,
       )
     })
+  })
+
+  /**
+   * ── THE SCENARIO EVERY OTHER WORLD SCENARIO IS THE MIRROR OF ──────────────────────────────
+   *
+   * BJ-TES-01 to -03 all run against `NO_SPRITES`: `/world-assets/` 404s and they assert the
+   * shape of a world with no art in it. That is a real state and worth asserting, and it is also
+   * why thirty-eight implemented scenarios could not see the defect that mattered — NOT ONE OF
+   * THEM EVER SERVED A SPRITE. The client asked for `tiles/ashfield-ground-a.png` while the set
+   * held `tiles/ashfield-ground-a-256x128.png`, and against a 404-everything mount those two are
+   * the same request.
+   *
+   * So this one serves the REAL set: the receipt built from `micro-tessera-assets`' own
+   * `MANIFEST.json`, keyed by its own `providers.json`, and a 200 for exactly the paths that
+   * receipt names — 404 for everything else, which is what a real nginx mount does. A client that
+   * spells a filename gets nothing. What is asserted is `FrameStats.ground`, the renderer's count
+   * of tiles it ACTUALLY DREW, which is zero for a world of holes.
+   *
+   * It needs the sibling repository and SKIPS without it, per `test/citations.test.ts`. A skipped
+   * test catches nothing and says so; `test/red.sh` declares the sibling as required so it is not
+   * reported as a guard that works when it did not run.
+   */
+  it('★ BJ-TES-37 [T1/presentation] a mounted set draws ground, at the names the set itself gives', async (t) => {
+    if (!assetSetAvailable()) {
+      t.skip('../tessera-assets is not checked out — this scenario cannot drive a real set')
+      return
+    }
+    const parcel = parcelOfTier('plot')
+    const routes: Routes = {
+      ...mountedSet(),
+      'GET /v1/wards': { body: { wards: [WARD] } },
+      'GET /v1/parcels/': { body: { parcel, placements: [] } },
+    }
+    await withScreen(
+      page(h(WorldPage), `/?parcel=${parcel.id}`),
+      { ...SESSION, ...WORLD, decodeImages: true, routes },
+      async (s) => {
+        // The loop ran and it put something on the canvas. `fillRect` alone is the background,
+        // which a world of holes also draws.
+        assert.ok(s.canvas.drawImage > 0, 'not one drawImage — the canvas is a blank field')
+
+        // THE BAR: the floor is drawn. Not that a path resolves, not that a file exists.
+        const drawn = Number(groundLine(s).replace(/[^\d]/g, ''))
+        assert.match(
+          groundLine(s),
+          /^[\d,]+ ground tiles drawn\.$/,
+          `the world drew no ground: "${groundLine(s)}"`,
+        )
+        assert.ok(drawn > 0, 'the ground count is zero, so every tile is a hole')
+
+        // And no ground tile is missing. This is the assertion that was false for as long as the
+        // client spelled its own filenames, against a mount that was complete.
+        const alert = s.queryByRole('alert', /could not be loaded/)
+        const holes = alert ? s.textOf(alert) : ''
+        assert.ok(!holes.includes('tiles/'), `a ground tile could not be loaded: ${holes}`)
+
+        // ══════════════════════════════════════════════════════════════════════════════════════
+        // ON THE WIRE, WHICH IS WHERE THE DEFECT WAS: the request carries the set's own filename,
+        // and no request carries a name this bundle composed. `<identity>.png` is the exact shape
+        // of the old construction, so a regression re-appears here as well as in the ground count.
+        // ══════════════════════════════════════════════════════════════════════════════════════
+        const asked = s.api.matching('GET /world-assets/').map((w) => w.path)
+        assert.ok(
+          asked.includes('/world-assets/SET.json'),
+          'the receipt was never read, so the paths came from somewhere else',
+        )
+        assert.ok(
+          asked.some((p) => p.endsWith('/tiles/ashfield-ground-a-256x128.png')),
+          `the set's own path for tiles/ashfield-ground-a was never requested: ${asked.join(' ')}`,
+        )
+        assert.deepEqual(
+          asked.filter((p) => /\/tiles\/[a-z-]+\.png$/.test(p)),
+          [],
+          'a sprite was requested at <identity>.png — this client is composing filenames again',
+        )
+      },
+    )
+  })
+
+  /**
+   * ── AND THE TWO WAYS AN EMPTY WORLD HAPPENS, TOLD APART ───────────────────────────────────
+   *
+   * A mount that was never mapped and a mount whose names this client cannot resolve produce the
+   * same picture — nothing — and they have different owners: the first is `micro-deploy`, the
+   * second is this bundle and `micro-tessera-assets` disagreeing about what an asset is called.
+   * For one night the estate could not distinguish them from the screen. Now the screen says.
+   *
+   * No sibling needed: the subject is the sentence, and the receipt here is deliberately a small
+   * one that names an asset the scene does not use.
+   */
+  it('BJ-TES-38 [T1/presentation] an empty world says whether the art is absent or merely unnameable', async () => {
+    const parcel = parcelOfTier('homestead')
+    const receipt = {
+      provider: 'flux-2-pro',
+      files: [{ key: 'tiles/somewhere-else-ground-a@256x128', path: 'tiles/x-256x128.png' }],
+    }
+    const routes: Routes = {
+      'GET /world-assets/SET.json': { body: receipt },
+      'GET /world-assets/': { status: 404 },
+      'GET /v1/wards': { body: { wards: [WARD] } },
+      'GET /v1/parcels/': { body: { parcel, placements: [] } },
+    }
+    await withScreen(
+      page(h(WorldPage), `/?parcel=${parcel.id}`),
+      { ...SESSION, ...WORLD, decodeImages: true, routes },
+      async (s) => {
+        assert.match(
+          groundLine(s),
+          /no floor under it/,
+          'a world with no ground under it reports a floor',
+        )
+        const text = s.textOf(s.byRole('alert', /could not be loaded/))
+        assert.match(
+          text,
+          /mounted flux-2-pro set names/,
+          'the page does not say a set IS mounted, so an unresolvable name reads as a missing ' +
+            'deploy — which is the wrong repository to send somebody to',
+        )
+        // A set that is mounted was not asked for a single sprite it does not name: the receipt
+        // already answered, and a 404 nobody sees is how this defect stayed invisible.
+        assert.deepEqual(
+          s.api.matching('GET /world-assets/').map((w) => w.path),
+          ['/world-assets/SET.json'],
+          'the client requested a path the mounted set does not name',
+        )
+      },
+    )
   })
 
   it('★ BJ-TES-04 [T1/client-request] leaving records one visit, with a dwell and no visitor', async () => {

@@ -104,6 +104,12 @@ export function apiBase(): string {
  * bundle that can name `candidates/qwen-image-2512/`. Encoding a provider here would pin an
  * experiment into every placement the world stores.
  *
+ * THIS IS A BASE, AND NOT HALF OF A FILENAME. What follows it is read from the mount's own
+ * `SET.json`, never spelled here: an identity is `objects/seating-stool` and the file it resolves
+ * to is `objects/seating-stool-512x512.png`. A client that appended `.png` to the identity — which
+ * this one did — asks for a name nothing serves, and every check upstream of it still passes.
+ * `src/lib/asset-set.ts` carries the account.
+ *
  * There is no fallback either, deliberately: an incomplete set fails loudly and writes nothing,
  * by design, and a client that substituted a placeholder sprite for a missing one would convert
  * that loud failure into a world that quietly renders wrong.

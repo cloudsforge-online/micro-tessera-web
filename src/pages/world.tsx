@@ -8,9 +8,10 @@
  *   ground      NOT SERVED. Laid out by `src/render/terrain.ts` from the ward's archetype, which
  *               that file says at length is a rendering choice with no authority, and which
  *               `MISSING_ROUTES` records as a gap in the service rather than a design.
- *   sprites     `/world-assets/<stable path>.png`, same-origin. No provider is nameable from
- *               this bundle, and there is no fallback sprite: a placement whose sprite will not
- *               load is a hole with a name, listed by the canvas.
+ *   sprites     `/world-assets/`, same-origin, at the path the mount's own `SET.json` gives for
+ *               the identity asked for — never a filename this bundle spells. No provider is
+ *               nameable from here, and there is no fallback sprite: a placement whose sprite
+ *               will not load is a hole with a name, listed by the canvas.
  *
  * ── The visit is recorded, once, and the client does not decide what it is worth ──────────────
  *

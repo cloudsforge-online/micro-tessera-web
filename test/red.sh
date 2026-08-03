@@ -188,10 +188,12 @@ mutate 'a route this client calls must exist in the service' src/lib/tessera.ts 
   $'"define(\'GET\', \'/v1/discover/promoted\'"' \
   tessera
 
-# 9. No file in the bundle may name an asset provider.
-mutate 'no source file names an asset provider' src/lib/sprites.ts \
-  'const res = await fetch(`${assetBase()}/${path}.png`)' \
-  'const res = await fetch(`${assetBase()}/candidates/qwen-image-2512/${path}.png`)'
+# 9. No file in the bundle may name an asset provider. The target moved when sprites.ts stopped
+#    composing URLs at all: the one remaining place a provider directory could be written into a
+#    request is where the receipt is fetched.
+mutate 'no source file names an asset provider' src/lib/asset-set.ts \
+  'const res = await fetch(`${base}/${RECEIPT}`)' \
+  'const res = await fetch(`${base}/candidates/qwen-image-2512/${RECEIPT}`)'
 
 # 10. parseAmount must refuse everything BigInt silently accepts.
 mutate 'parseAmount refuses what BigInt accepts' src/lib/money.ts \
@@ -461,6 +463,56 @@ mutate 'every screen carries a scenario that runs' test/journeys.ts \
   "  'not-found'," \
   "  'not-found',
   'ledger',"
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# 51-55. THE ASSET PATH. Every one of these was GREEN before this repository could resolve a
+# sprite, and the product was broken the whole time: the client asked for
+# `tiles/ashfield-ground-a.png` while the set held `tiles/ashfield-ground-a-256x128.png`, so a
+# complete, reconciled, byte-verified 392-asset mount rendered every tile as a hole.
+#
+# Nothing in either repository could see it — the mount validator proved 392/392 and every world
+# scenario stubbed `/world-assets/` as 404, so no test in this suite had ever seen a sprite ARRIVE.
+# 51 and 52 are the two directions the disagreement can reappear from, and both are declared as
+# needing the sibling: without `../tessera-assets` the scenario skips, and a skipped test catches
+# nothing.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+# 51. The client composes a filename out of an identity again — the original defect, exactly.
+mutate 'the client never composes a sprite filename' src/lib/sprites.ts \
+  'const res = await fetch(url)' \
+  "const res = await fetch(\`\${url.slice(0, url.lastIndexOf('/'))}/\${path}.png\`)" \
+  tessera-assets
+
+# 52. The other direction: this client renders an identity the set does not ship. A rename on
+#     either side is the same defect, and neither repository can see it alone.
+mutate 'a ground identity this client renders must exist in the set' src/render/terrain.ts \
+  "  'ground-worn'," \
+  "  'ground-weathered'," \
+  tessera-assets
+
+# 53. The floor must be countable. Without this the sentence beside the canvas says the same thing
+#     for a world drawn on solid ground and a world with nothing under it — which is precisely how
+#     the defect stayed invisible on screen while every check passed.
+mutate 'a world with no floor says so' src/components/world-canvas.tsx \
+  ': stats.ground > 0' \
+  ': stats.ground >= 0'
+
+# 54. A receipt that names nothing is not a set of size zero. Treating it as one would make every
+#     sprite a silent hole against a mount that answered 200 with a body nobody understood.
+mutate 'a receipt naming no asset is refused, not treated as empty' src/lib/asset-set.ts \
+  'return map.size === 0 ? undefined : map' \
+  'return map'
+
+# 55. An identity the mounted set does not name must cost no request. A 404 nobody sees is how
+#     this whole class of defect hides; the receipt has already answered.
+mutate 'an unnameable sprite is a hole, not a request' src/lib/sprites.ts \
+  '    if (url === undefined) {
+      this.failed.add(path)
+      return
+    }' \
+  '    if (url === undefined) {
+      url = `/world-assets/${path}.png`
+    }'
 
 echo
 printf 'guards proven red: %d   guards that stayed green: %d   not proven here: %d\n' \

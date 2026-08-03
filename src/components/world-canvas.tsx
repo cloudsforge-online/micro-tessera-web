@@ -28,6 +28,7 @@ import { WorldRenderer, type FrameStats } from '../render/renderer.ts'
 import { zoomToFit, type Camera } from '../render/iso.ts'
 import type { Scene } from '../render/scene.ts'
 import type { SpriteCache } from '../lib/sprites.ts'
+import type { AssetSet } from '../lib/asset-set.ts'
 
 export interface WorldCanvasProps {
   readonly scene: Scene
@@ -49,6 +50,7 @@ export function WorldCanvas({ scene, sprites, side, centre, label }: WorldCanvas
   const cameraRef = useRef<Camera>({ x: 0, y: 0, zoom: 1 })
   const [stats, setStats] = useState<FrameStats | null>(null)
   const [missing, setMissing] = useState<readonly string[]>([])
+  const [assetSet, setAssetSet] = useState<AssetSet | undefined>(undefined)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -88,6 +90,11 @@ export function WorldCanvas({ scene, sprites, side, centre, label }: WorldCanvas
         prev === null ||
         prev.sprites !== frame.sprites ||
         prev.visible !== frame.visible ||
+        // `ground` is in this comparison because the floor arriving is the single most visible
+        // change a frame can report, and for one night it was the only one nothing could see:
+        // a world whose every tile 404d and a world drawn on solid ground produced the SAME
+        // sentence, because the sentence only counted objects.
+        prev.ground !== frame.ground ||
         prev.degraded !== frame.degraded
           ? frame
           : prev,
@@ -154,6 +161,7 @@ export function WorldCanvas({ scene, sprites, side, centre, label }: WorldCanvas
 
   useEffect(() => {
     setMissing(sprites.missing)
+    setAssetSet(sprites.set)
   }, [sprites, stats])
 
   return (
@@ -182,6 +190,28 @@ export function WorldCanvas({ scene, sprites, side, centre, label }: WorldCanvas
             : `${stats.sprites} of ${stats.visible} objects in view.`}
       </p>
 
+      {/*
+        ══════════════════════════════════════════════════════════════════════════════════════
+        THE FLOOR, COUNTED — AND THE SENTENCE THAT WOULD HAVE MADE THE ASSET-PATH DEFECT VISIBLE.
+
+        The line above counts OBJECTS. A parcel with nothing built on it reports "0 of 0 objects
+        in view" whether it is standing on painted ground or on absolutely nothing, so a mount
+        whose every tile 404d read exactly like an empty plot — while the container was healthy,
+        the receipt validated 392 of 392, and every byte was served byte-identical.
+
+        `ground` is the renderer's count of tiles it ACTUALLY DREW: `renderer.ts` skips a tile
+        whose bitmap is not in the cache, so this number is zero for a world of holes and nonzero
+        for a world with a floor. It is the one figure that separates the two.
+        ══════════════════════════════════════════════════════════════════════════════════════
+      */}
+      <p className="tw-world__ground" role="status">
+        {stats === null
+          ? 'No ground has been drawn yet.'
+          : stats.ground > 0
+            ? `${stats.ground.toLocaleString()} ground tiles drawn.`
+            : 'No ground is drawn — this place has no floor under it.'}
+      </p>
+
       {missing.length > 0 && (
         // An absence with a name. There is no fallback sprite by design (see lib/sprites.ts), so
         // the alternative to saying this is a hole in the world nobody can account for.
@@ -190,6 +220,17 @@ export function WorldCanvas({ scene, sprites, side, centre, label }: WorldCanvas
           {missing.slice(0, 3).join(', ')}
           {missing.length > 3 ? ` and ${missing.length - 3} more` : ''}. Those objects are not
           drawn — nothing has been substituted for them.
+          {/*
+            WHICH OF THE TWO FAILURES THIS IS. A mount that is not there and a mount whose names
+            this client cannot resolve both produce a list of holes, and they have different
+            owners: the first is a deploy that has not mapped the volume, the second is this
+            bundle and micro-tessera-assets disagreeing about what an asset is called. Saying
+            which is what turns "the world is empty" into something somebody can act on.
+          */}
+          {assetSet?.state === 'absent' && ` No asset set is mounted: ${assetSet.why}.`}
+          {assetSet?.state === 'present' &&
+            ` The mounted ${assetSet.provider} set names ${assetSet.size.toLocaleString()} assets` +
+              ' and does not name these.'}
         </p>
       )}
     </div>

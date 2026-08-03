@@ -45,7 +45,7 @@ Every item is required. Nothing here is optional and this repository cannot do a
 | `IDENTITY_HANDOFF_ORIGINS` | add this client's origin — `http://localhost:5172` in dev, `https://tessera.<apex>` in production | Sign-in is inherited, not rebuilt: clients post to `POST /auth/handoff/redeem` and `micro-identity` refuses an origin not on that list rather than minting a code that could not be redeemed. **Without this, every Sign in button on this surface fails silently.** |
 | Compose services | `cf-tessera` 4140, `cf-web-tessera` 4141 | §10.1. The next after aetherholm-web's 4139. `cf-web-aetherholm` at `deploy/gateway/dynamic/estate-web.yml:310-315`, `:426-428` is the pattern. |
 | Gateway route | `tessera.<apex>` → `cf-web-tessera`, and the API on the same hostname per the registry | The `tessera` surface row now exists in `ui/packages/ui/src/surfaces.ts`. |
-| **`/world-assets/`** | map the path on **this client's own origin** to wherever `micro-tessera-assets` is materialised | The single item most likely to be missed. The client asks for `/world-assets/objects/<slug>.png` **same-origin**, deliberately: a ward costs several hundred image requests and a cross-origin path puts a CORS preflight in front of every one. The art is **not** in this image — baking 784 PNGs into the bundle would mean rebuilding and re-promoting the client to change one chair. Until the mapping exists, nginx 404s and the client names each missing sprite on screen rather than substituting anything. |
+| **`/world-assets/`** | map the path on **this client's own origin** to wherever `micro-tessera-assets` is materialised, **`SET.json` included** | The single item most likely to be missed. The mount must be exactly what `materialise.py --into` wrote: the client reads `/world-assets/SET.json` first and resolves every sprite through it, so a mount that serves the PNGs while excluding the receipt renders as a world with no art and reports itself as unmounted. Same-origin, deliberately: a ward costs several hundred image requests and a cross-origin path puts a CORS preflight in front of every one. The art is **not** in this image — baking 392 PNGs into the bundle would mean rebuilding and re-promoting the client to change one chair. Until the mapping exists, nginx 404s and the client names each missing sprite on screen rather than substituting anything. |
 | CORS on `micro-tessera` | allow this client's origin | The client and the service are separate surfaces even in production, so every API call is cross-origin. |
 | Scope grants | `tessera:read`, `tessera:write` | Registered by the service. |
 | Smoke check | `GET /discover` must answer **200** on a hard refresh | It is a real route and needs no session, which is why it is `DEEP_LINK_PATH`. A probe with no token against a protected route gets a 200 and a sign-in prompt, which it cannot tell from a working page. |
@@ -119,7 +119,7 @@ bundles and this is not one of them, and its adversarial matrix stops at `BJ-ADV
 are *allocated here* rather than transcribed, which `journeys.ts` states along with what should
 happen to them when doc 22 is next revised.
 
-**38 scenarios run; 10 are recorded as blocked, with the reason.** Seven of those ten carry a
+**40 scenarios run; 10 are recorded as blocked, with the reason.** Seven of those ten carry a
 `blockedWhile` anchor — a `<repo>/<path>#<string>` a meta-test resolves — because a blocker is a
 claim about the estate written at one moment and a claim nothing checks is a claim that rots. When
 the terrain route lands, or a build tool starts calling `placeObjects`, or `micro-ui` installs
@@ -131,10 +131,72 @@ outcome turns on a server rule must name the test that owns it (doc 22 §3.2); e
 can be resolved must resolve; **every screen must carry at least one scenario that runs**; and a
 scenario cannot be declared, counted and never written.
 
+### The asset path: a complete, validated mount that rendered every tile as a hole
+
+The most instructive failure this repository has had, and **everything upstream of it was
+correct**. `micro-deploy`'s `scripts/estate-verify.sh` found it by driving the estate rather than
+reading it:
+
+```
+client   GET /world-assets/tiles/ashfield-ground-a.png       404
+mount        /world-assets/tiles/ashfield-ground-a-256x128.png
+```
+
+The asset set was complete — 392 entries, reconciled both directions with zero orphans, every byte
+served identically through the container, the mount validator proven by removing one file and
+watching it fail at 391/392. And the world rendered nothing, because **this client composed a
+filename out of an identity**: `fetch(\`${assetBase()}/${path}.png\`)`. Every materialised filename
+carries its delivered size; no identity does.
+
+**This side was wrong.** The contract was never ambiguous — `providers.json` declares the identity
+block, `MANIFEST.json` carries `asset` and `path` as different strings on all 392 entries, and
+`materialise.py` writes `SET.json` mapping one to the other. Nothing was asked of
+`micro-tessera-assets`; nothing there changed. The suffix is meaningful besides: the 96 terrain
+tiles are *derived*, cut and projected from 32 plates by `project_iso.py`, and `-256x128` records
+the geometry that produced them.
+
+So `src/lib/asset-set.ts` reads the mount's own receipt and `src/lib/sprites.ts` composes nothing.
+A file renamed in the set now resolves; an *identity* that diverges is a hole with a name and a
+reason on screen. **An nginx rewrite was refused** for the reason `estate-verify.sh` gives: it
+would leave two naming conventions in the estate with the invisible one in the deploy, where
+neither repository would look.
+
+Why thirty-eight implemented scenarios missed it: **not one of them had ever served a sprite.**
+`createImageBitmap` exists in neither Node nor happy-dom, so every 200 threw and landed in `failed`
+exactly like a 404 — so every world scenario stubbed `/world-assets/` as 404 and asserted the shape
+of a world with no art in it, which is identical to the shape of this defect. `MountOptions.
+decodeImages` closes that, and `BJ-TES-37` drives the real set: the receipt built from
+`micro-tessera-assets`' own `MANIFEST.json`, a 200 for exactly the paths it names and a 404 for
+everything else. It asserts `FrameStats.ground`, the renderer's count of tiles it actually drew.
+
+Driven, not asserted — the same 392-asset mount, two bundles, one real Chromium:
+
+| | requests to `/world-assets/` | ground drawn | canvas |
+| --- | --- | --- | --- |
+| before | 3, **all 404**, at `tiles/ashfield-ground-a.png` | 0 | 0 of 756,000 pixels painted |
+| after | 4, **all 200**, at `SET.json` and `tiles/ashfield-ground-a-256x128.png` | **256 tiles** | 361,706 of 756,000 painted |
+
+`python3 materialise.py --provider flux-2-pro --into <dir>` in `micro-tessera-assets`, that
+directory mounted at `/usr/share/nginx/html/world-assets` in this image, `/v1/*` stubbed at the
+browser and nothing else.
+
+The screen could not have told anyone either, and that is fixed in the same change: the live region
+counted **objects** only, so a world standing on solid ground and a world with nothing under it
+produced the same sentence — and `setStats` did not even re-render on a change in the ground count,
+so the missing tiles were never listed. The canvas now says how much floor it drew, and an empty
+world says *which* of the two causes it is: no set mounted, or a set mounted whose names this
+client cannot resolve. They have different owners.
+
+**One thing for `micro-deploy`**, reported rather than reached into: `scripts/estate-verify.sh`
+probes `/world-assets/tiles/ashfield-ground-a.png` as "the path tessera-web's own renderer asks
+for". That is no longer a path this client can ask for. The equivalent check is that
+`/world-assets/SET.json` is served and that a `files[].path` taken out of it answers 200 — which
+the lines just above it already do.
+
 ### Proving the tests can fail
 
 `bash test/red.sh` applies one real defect at a time, runs the whole suite, requires a failure and
-restores the file. **50 guards, 50 proven red, none stayed green.**
+restores the file. **55 guards, 55 proven red, none stayed green.**
 
 Three of those fifty put back a defect this suite *found* rather than a property it confirmed. All
 three commit forms — fire an object, list one, claim ground — guarded themselves with `if (busy)

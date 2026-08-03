@@ -205,6 +205,32 @@ export interface MountOptions {
    * ══════════════════════════════════════════════════════════════════════════════════════════
    */
   canvas2d?: boolean
+  /**
+   * Give the realm a `createImageBitmap`, so a sprite that WAS served can actually be cached.
+   *
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   * WITHOUT THIS, NO SCENARIO IN THIS SUITE CAN EVER SEE A SPRITE ARRIVE — WHICH IS EXACTLY HOW
+   * THE ASSET-PATH DEFECT SURVIVED A CATALOGUE OF THIRTY-EIGHT IMPLEMENTED SCENARIOS.
+   *
+   * `SpriteCache.fetchOne` ends in `createImageBitmap(await res.blob())`. Neither Node nor
+   * happy-dom defines it, so every 200 threw and landed in `failed` — indistinguishable from a
+   * 404. Every world scenario therefore stubbed `/world-assets/` as 404 and asserted the shape of
+   * a world with no art in it, and the one thing none of them could assert was that a sprite the
+   * mount HOLDS is a sprite this client can fetch. The client asked for
+   * `tiles/ashfield-ground-a.png` against a mount holding `tiles/ashfield-ground-a-256x128.png`
+   * for as long as both existed, with the suite green.
+   *
+   * THE BOUNDARY, which is the same one `canvas2d` draws: this fabricates a bitmap from whatever
+   * bytes arrived and NEVER decodes them. A scenario may assert that a sprite RESOLVED and was
+   * drawn; it may not assert anything about what it looks like. Real decoding of the real FLUX
+   * bytes is `pnpm measure` against a real Chromium, and pixels are tier 3 (BJ-TES-35).
+   *
+   * It cannot manufacture a pass out of a miss: `fetchOne` only reaches `createImageBitmap` on a
+   * 2xx, so a 404 — and an identity the receipt does not name, which costs no request at all —
+   * still lands in `missing`.
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   */
+  decodeImages?: boolean
 }
 
 /** What the recording 2D context was asked to do. Counts, never pixels. */
@@ -488,6 +514,26 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
     value: true,
   })
 
+  // Saved and restored on its own rather than through GLOBALS, because it is NOT a property of
+  // the happy-dom window: it is fabricated here, only when a scenario asks for it, and a realm
+  // that never asked must not acquire one.
+  const savedBitmap = Object.getOwnPropertyDescriptor(g, 'createImageBitmap')
+  if (options.decodeImages === true) {
+    Object.defineProperty(g, 'createImageBitmap', {
+      configurable: true,
+      writable: true,
+      // Counts, not pixels — the same boundary the recording 2D context draws. `close` exists
+      // because `SpriteCache.close` calls it on every bitmap it holds, and a missing method there
+      // would throw inside an unmount effect.
+      value: async (source: unknown) => ({
+        width: 1,
+        height: 1,
+        close: () => undefined,
+        source,
+      }),
+    })
+  }
+
   /* -- console capture ---------------------------------------------------------------------- */
 
   const consoleErrors: string[] = []
@@ -770,6 +816,8 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
         if (descriptor) Object.defineProperty(g, key, descriptor)
         else delete g[key]
       }
+      if (savedBitmap) Object.defineProperty(g, 'createImageBitmap', savedBitmap)
+      else delete g['createImageBitmap']
       win.close()
     },
   }
