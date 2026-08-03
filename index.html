@@ -1,0 +1,73 @@
+<!doctype html>
+<!--
+  data-cf-product picks the accent ramp and data-cf-substrate the ash ramp, both from
+  @cloudsforge/ui/tokens.css. They are on <html> and set STATICALLY rather than by React, because
+  a page that paints before the attributes land flashes the default ember and then changes colour.
+
+  `worlds`, because Tessera is a Forge Worlds title and 23-tessera.md §1.1 is explicit: "UI chrome
+  wears Forge Worlds' accent #6d9a49, as Emberkin and Aetherholm both do — a title wears its
+  product's colour rather than claiming its own."
+
+  `warm`, because this world's ground is fired clay and ember light. Emberkin and Aetherholm chose
+  `cool` for a storm-lit sky; Tessera's key light is warm ash-and-ember against cool shadow
+  (§1.1), so the substrate leans the other way. It restates no hex — the ramp is the design
+  system's.
+-->
+<html lang="en-GB" data-cf-product="worlds" data-cf-substrate="warm">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      Zoom is NOT disabled. A world on a canvas is exactly the surface where somebody reaches for
+      pinch-to-zoom, and a viewport lock is an accessibility failure whatever the page contains.
+      The canvas has its own zoom control as well; the two do not conflict, because the browser's
+      zooms the page and the client's zooms the world.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="colour-scheme" content="dark" />
+    <meta
+      name="description"
+      content="Tessera — claim ground for free, fire objects out of a prompt, and get paid in EMBER when someone buys what you made. A persistent isometric world in a browser tab."
+    />
+    <!--
+      The build that produced this bundle. Stamped by the Dockerfile, read by src/lib/obs.ts, and
+      the reason an error report can be pinned to the deploy that introduced it. It is an identity
+      rather than a configuration: it names the artefact, it does not tell it where it is running.
+    -->
+    <meta name="cf-release" content="dev" />
+    <!--
+      NO <link rel="icon"> AND NO og:image, AND THAT IS THE HONEST STATE RATHER THAN AN OVERSIGHT.
+
+      Tessera's chrome is set 14 of docs/ecosystem/23-tessera.md §2.14 — `chrome/mark` generated,
+      then favicon-32/192/512, apple-touch-180 and og-title DERIVED from it — and
+      micro-tessera-assets is generating it in a sibling working tree as this is written. There is
+      no file to point at.
+
+      The alternative was to copy the estate's generic chrome in and let a brand test pass against
+      it. Three frontends in this estate shipped images with no favicon while their own brand tests
+      went green against a source tree that had one; the failure mode of a PLACEHOLDER is that
+      nobody ever notices it is still there. A missing tag is visible in one glance at the tab.
+
+      `test/brand-chrome.test.ts` holds the gate: it fails the moment a file lands in public/
+      without the tags being added, and it fails if a tag is added without the file. It is a
+      two-way check on purpose — the one-way version is how a placeholder ships.
+    -->
+
+    <title>Tessera</title>
+
+    <!-- Relative on purpose: one bundle serves localhost, preview and the apex, and this file
+         names no hostname. Crawlers resolve it against the page they fetched. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Tessera" />
+    <meta
+      property="og:description"
+      content="A world people make. Claim ground for free, fire an object out of a prompt, open a place. A Forge Worlds title."
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

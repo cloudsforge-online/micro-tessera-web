@@ -1,0 +1,40 @@
+{
+  "name": "@cloudsforge/tessera-web",
+  "version": "1.0.0",
+  "packageManager": "pnpm@11.9.0",
+  "private": true,
+  "description": "Tessera — the client for the fourth Forge Worlds title: a persistent user-made isometric world in a browser tab. The canvas renderer, the ward map, the Kiln, build-and-place, Workshop pages and the three-figure wallet strip.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --import @cloudsforge/ui/test-loader --test test/*.test.ts",
+    "measure": "node --import tsx test/perf/measure.ts"
+  },
+  "//test": "--import @cloudsforge/ui/test-loader, not a local react-dedupe. `link:` symlinks micro-ui's WORKING TREE, whose own node_modules holds the react it needs to test itself, and Node resolves a bare specifier from the importing file's REALPATH — so the design system's components find that second copy, share no dispatcher with ours, and every hook they call throws \"Cannot read properties of null (reading 'useState')\". Shipping dist did not change that: dist/index.js has the same realpath as src/index.tsx. Delete the flag and the suite goes red, not quiet. Proven red on this repository — see test/README-RED.md.",
+  "//measure": "`pnpm measure` is NOT part of `pnpm test`. It drives a real Chromium and writes docs/RENDER-BUDGET.md; it takes minutes and its numbers are hardware-dependent, so it is a deliberate act rather than something a CI run silently re-decides. The check that DOES run in the suite is test/render-budget.test.ts, which asserts that the caps this client actually enforces are the ones the measurement produced.",
+  "//": "@cloudsforge/ui is consumed from a sibling path because it is not published yet. It becomes a registry version the day it is, and the Dockerfile's uipkg build context goes with it. `link:` rather than `file:` because link: symlinks the working tree, so an edit in the design system is visible here without a republish; pnpm PACKS a file: directory and a packed copy goes stale. There is NO rendering library here — no pixi, no three, no phaser. The renderer is ~400 lines of Canvas 2D against measured numbers (docs/RENDER-BUDGET.md); a WebGL batcher is a dependency, a shader toolchain and a class of driver bug, and the measurement says it is not needed at the caps this design ships.",
+  "dependencies": {
+    "@cloudsforge/ui": "link:../ui/packages/ui",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "happy-dom": "^15.11.0",
+    "playwright-core": "1.62.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}
