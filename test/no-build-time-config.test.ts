@@ -105,33 +105,81 @@ test('the entry document carries no environment either', () => {
   assert.match(html, /name="cf-release"/, 'index.html no longer carries the release identity')
 })
 
+/**
+ * The forbidden expression, ASSEMBLED rather than written out — and the reason is the fourth
+ * instance in this repository of a scan matching text that was never code.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * micro-org's `web-ci.yml` runs a `runtime-hosts` job that greps the WHOLE REPOSITORY for
+ * `import.meta.env.VITE_[A-Z0-9_]+`, excluding only `*.md` and `.github/workflows/*`. Test files
+ * are in scope. So a fixture spelling the expression out — which is the only way to prove the
+ * scanner below can actually fail — would turn the estate's own CI red on this repository, over a
+ * string that exists to demonstrate that the string is banned.
+ *
+ * FOUND BY REPRODUCING THE WORKFLOW LOCALLY, not by reading it: the grep printed four lines of
+ * this file and one of test/red.sh. It is the same defect this repository has now hit three times
+ * from the inside — the nginx rule finding its own rationale, the provider scan finding the
+ * sentence forbidding providers, and this scanner finding vite.config.ts's explanation.
+ *
+ * There were two ways to answer it and one is worse than the problem. Excepting `test/` in
+ * web-ci.yml would weaken a rule for all fourteen frontends so that one repository's fixture could
+ * stay literal — the guard being loosened by the first repository it inconveniences, which is how
+ * §3.3e happened. Assembling the string costs one line and weakens nothing: the value handed to
+ * the scanner is byte-identical, and no line of this file contains it.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+const META_ENV = ['import', 'meta', 'env'].join('.')
+
 test('the scan can still fail — proven, not assumed', () => {
   // An ABSENCE that cannot fail is this estate's most common defect: a CI rule found INVERTED, six
   // tests that `return`ed instead of skipping, a grep that skipped files with NUL bytes. So the
   // stripper is driven against a line that is real code and MUST be caught, and against the same
   // text in a comment, which must not be.
   assert.match(
-    stripTs('const base = import.meta.env.VITE_API_URL'),
+    stripTs(`const base = ${META_ENV}.VITE_API_URL`),
     FORBIDDEN,
     'the scan would not catch a build-time variable written as real code',
   )
   assert.match(stripTs('const k = VITE_API_URL'), FORBIDDEN, 'the scan misses a bare VITE_ name')
   assert.doesNotMatch(
-    stripTs('// never write import.meta.env.VITE_API_URL here\nconst p = 1'),
+    stripTs(`// never write ${META_ENV}.VITE_API_URL here\nconst p = 1`),
     FORBIDDEN,
     'the scan still matches its own documentation',
   )
   assert.doesNotMatch(
-    stripTs('/**\n * `import.meta.env.VITE_X` is forbidden.\n */\nconst p = 1'),
+    stripTs(`/**\n * \`${META_ENV}.VITE_X\` is forbidden.\n */\nconst p = 1`),
     FORBIDDEN,
     'the scan still matches a block comment',
   )
   assert.doesNotMatch(
-    stripHtml('<!--\n  import.meta.env.VITE_X is forbidden.\n-->\n<html></html>'),
+    stripHtml(`<!--\n  ${META_ENV}.VITE_X is forbidden.\n-->\n<html></html>`),
     FORBIDDEN,
     'the HTML scan still matches an HTML comment',
   )
   // And it must not fire on a name that merely ends in something VITE_-shaped, which is what the
   // lookbehind is for. `INVITE_CODE` is not a Vite variable.
   assert.doesNotMatch(stripTs('const INVITE_CODE = 1'), FORBIDDEN, 'the scan fires on INVITE_CODE')
+})
+
+test('this file does not contain the expression it forbids', () => {
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // The guard on the workaround, because an assembled constant is exactly the kind of care that
+  // gets undone by the next person simplifying a fixture back to a literal. web-ci.yml's grep
+  // would then fail this repository, and the failure would name a test file rather than a defect.
+  //
+  // The pattern is micro-org web-ci.yml's, transcribed — and it is applied to the RAW bytes of this
+  // file, comments included, because that is what `git grep` sees.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  const estateScan = /import\.meta\.env\.VITE_[A-Z0-9_]+/
+  for (const file of ['test/no-build-time-config.test.ts', 'test/red.sh']) {
+    assert.doesNotMatch(
+      readFileSync(join(REPO, file), 'utf8'),
+      estateScan,
+      `${file} spells out the expression micro-org's web-ci.yml greps the whole repository for, ` +
+        "so the estate's own CI would fail this repository over a test fixture. Assemble it.",
+    )
+  }
+  // And the scan being guarded against must really match the literal form, or the two tests above
+  // are agreeing about nothing.
+  assert.match(`${META_ENV}.VITE_API_URL`, estateScan, 'the transcribed estate pattern is wrong')
 })

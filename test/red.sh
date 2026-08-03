@@ -250,9 +250,18 @@ mutate 'CI passes a token that can read the private micro-ui' .github/workflows/
 # 26. No source file may read a build-time environment variable. Vite inlines it, the bundle then
 #     carries its environment, and one image stops serving every environment. Written as REAL CODE,
 #     because the scan strips comments — the trap this repository has fallen into three times.
+#
+#     THE EXPRESSION IS ASSEMBLED, and that is not fussiness. micro-org's web-ci.yml greps the
+#     WHOLE repository for `import.meta.env.VITE_<NAME>`, excluding only *.md and the workflows
+#     directory — so spelling it out here would fail the estate's CI on this repository over a
+#     mutation whose entire purpose is to prove the expression is banned. The concatenation below
+#     produces the identical string; no line of this file contains it. Found by running that job
+#     by hand, since Actions is billing-blocked and could not have told anybody.
+#     test/no-build-time-config.test.ts asserts this file stays that way.
+env_read="import.meta.env.""VITE_ASSET_BASE"
 mutate 'no source file reads a build-time environment variable' src/lib/hosts.ts \
   'return `${pageOrigin()}/world-assets`' \
-  'return import.meta.env.VITE_ASSET_BASE ?? `${pageOrigin()}/world-assets`'
+  "return ${env_read} ?? \`\${pageOrigin()}/world-assets\`"
 
 echo
 printf 'guards proven red: %d   guards that stayed green: %d\n' "$pass" "$fail"
