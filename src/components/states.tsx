@@ -1,5 +1,5 @@
 /**
- * The four states a screen can be in, as four visibly different things.
+ * The five states a screen can be in, as five visibly different things.
  *
  * They are separated because collapsing any two of them destroys information the user needs:
  *
@@ -11,9 +11,13 @@
  *               `POST /v1/parcels/:id/placements` both raise `ForbiddenError('this parcel is not
  *               yours')` BY DESIGN. A parcel's EXISTENCE is public — that is what a world is —
  *               and only changing it is refused. The copy says so.
+ *   SIGNED OUT— the query was refused for want of a token, and the remedy is a button. See below.
  *
  * A spinner that never resolves, an empty list that was actually a timeout, and a "no results"
- * that was actually a refusal are the three failures this file exists to prevent.
+ * that was actually a refusal are the three failures this file exists to prevent. The fifth state
+ * was added because a fourth one was happening: a REFUSAL FOR WANT OF A TOKEN was being rendered
+ * as a failure, so the first thing a signed-out stranger saw on the public World page was "That
+ * did not load" over a Try again button that could never work.
  */
 import type { ReactNode } from 'react'
 import type { ErrorNotice } from '../lib/api.ts'
@@ -99,6 +103,53 @@ export function Failed({
  * teaches the user the app is unreliable. On this app a 403 usually means "not yours": another
  * player's city, someone else's fleet, a live battle you were not in.
  */
+/**
+ * Refused for want of a token — an invitation, not an error.
+ *
+ * ── Why this is a state and not a `<Failed>` with kinder words ────────────────────────────────
+ *
+ * `micro-tessera` authenticates every route including the reads (`tessera/src/server.ts:414`),
+ * and `src/lib/routes.ts` already records the consequence and calls it the service's gap to
+ * close: "what a signed-out visitor actually gets is the screen and an invitation — not the
+ * world." The invitation is this component. Until this existed the intent was written down in
+ * one file and contradicted by the rendering in three others.
+ *
+ * `role="status"`, deliberately NOT `role="alert"`. Nothing has gone wrong. A screen reader
+ * announcing an alert to a visitor who simply has not signed in yet is telling them about a
+ * malfunction that is not happening.
+ *
+ * NO REQUEST ID. The id is the thing support needs in order to find a failure across the estate,
+ * and printing one here would tell the reader that something went wrong and was recorded. Nothing
+ * did. The message from the service ("a valid bearer token is required") is not shown either: it
+ * is a protocol sentence written for a client, not for a person standing at a door.
+ */
+export function SignedOut({
+  onSignIn,
+  title = 'Sign in to see the Mosaic',
+  hint = 'Tessera asks who you are before it will show you the world. Nothing here is broken — the wards are open, and one sign-in puts you in them.',
+}: {
+  onSignIn?: (() => void) | undefined
+  title?: string | undefined
+  hint?: string | undefined
+}) {
+  return (
+    <div className="tw-state tw-state--signedout" role="status">
+      <span className="tw-state__icon" aria-hidden="true">
+        ◆
+      </span>
+      <p className="tw-state__title">{title}</p>
+      <p className="tw-state__hint">{hint}</p>
+      {onSignIn && (
+        <div className="tw-state__action">
+          <button type="button" className="cf-btn" onClick={onSignIn}>
+            Sign in
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Forbidden({
   notice,
   title = 'That is not yours to see',

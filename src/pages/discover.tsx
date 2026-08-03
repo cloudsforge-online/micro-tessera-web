@@ -27,7 +27,10 @@
 import { useState } from 'react'
 import { discover, listWards } from '../lib/tessera.ts'
 import { useAsync } from '../lib/useAsync.ts'
-import { Empty, Failed, Loading } from '../components/states.tsx'
+// The plain function, not `useSession().signIn`. They are the same redirect; this form keeps the
+// page mountable outside `<AuthProvider>`, which is how the screen tests render it.
+import { signIn } from '../lib/api.ts'
+import { Empty, Failed, Loading, SignedOut } from '../components/states.tsx'
 
 export function DiscoverPage() {
   const [wardId, setWardId] = useState('')
@@ -37,6 +40,12 @@ export function DiscoverPage() {
     [wardId],
     'The feed could not be read.',
   )
+
+  // EITHER read being refused for want of a token means the whole page is unavailable to this
+  // visitor, so the invitation replaces the page rather than sitting under a ward selector with
+  // nothing in it. The header stays: it says what this page WOULD show, which is the argument for
+  // signing in.
+  const signedOut = wards.notice?.unauthenticated === true || feed.notice?.unauthenticated === true
 
   return (
     <div className="tw-discover">
@@ -49,20 +58,32 @@ export function DiscoverPage() {
         </p>
       </header>
 
-      <label className="tw-field tw-field--inline">
-        <span className="tw-field__label">Ward</span>
-        <select value={wardId} onChange={(e) => setWardId(e.target.value)}>
-          <option value="">Everywhere</option>
-          {(wards.data?.wards ?? []).map((ward) => (
-            <option key={ward.id} value={ward.id}>
-              {ward.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {signedOut && (
+        <SignedOut
+          onSignIn={() => signIn()}
+          title="Sign in to see where people are going"
+          hint="The feed is ranked by footfall and dwell and by nothing else — but Tessera asks who you are before it reads it. Nothing here is broken."
+        />
+      )}
 
-      {feed.notice && <Failed notice={feed.notice} onRetry={feed.reload} />}
-      {!feed.notice && feed.data === undefined && <Loading label="Reading the feed" />}
+      {!signedOut && (
+        <label className="tw-field tw-field--inline">
+          <span className="tw-field__label">Ward</span>
+          <select value={wardId} onChange={(e) => setWardId(e.target.value)}>
+            <option value="">Everywhere</option>
+            {(wards.data?.wards ?? []).map((ward) => (
+              <option key={ward.id} value={ward.id}>
+                {ward.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {!signedOut && feed.notice && <Failed notice={feed.notice} onRetry={feed.reload} />}
+      {!signedOut && !feed.notice && feed.data === undefined && (
+        <Loading label="Reading the feed" />
+      )}
       {feed.data?.parcels.length === 0 && (
         <Empty
           title="Nobody has been anywhere yet"

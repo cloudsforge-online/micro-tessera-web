@@ -150,6 +150,31 @@ export interface ErrorNotice {
   requestId: string | undefined
   /** 403 is its own screen: the request was understood and refused, and retrying will not help. */
   forbidden: boolean
+  /**
+   * 401 is its own screen too, and it is NOT a failure.
+   *
+   * ── Why this flag had to exist ────────────────────────────────────────────────────────────
+   *
+   * `micro-tessera` authenticates EVERY route, including the reads: `tessera/src/server.ts:414`
+   * calls `authenticate(ctx, deps)` before `GET /v1/wards` returns anything. So a signed-out
+   * visitor on the public World and Wards pages gets a 401 — by the service's design, not by
+   * anybody's mistake.
+   *
+   * `src/lib/routes.ts` already wrote down what should happen next: "what a signed-out visitor
+   * actually gets is the screen and an invitation — not the world". What they actually got was
+   * `<Failed>` — "That did not load", a red alert and a Try again button that can never succeed
+   * — because the only status this function singled out was 403, and 401 fell through to the
+   * generic failure. A real browser driven through the gateway with no session is what showed
+   * it; every mocked journey passed, because a stub table answers 200 to a request that has no
+   * token.
+   *
+   * Separating this from `forbidden` rather than folding the two together: 403 means "understood
+   * and refused, and it will stay refused" (this app's parcels are refused that way by design —
+   * "this parcel is not yours"), while 401 means "ask again with a token", and the remedy is a
+   * sign-in button rather than an apology. Collapsing them would offer to sign in a user who is
+   * already signed in and simply cannot have the thing.
+   */
+  unauthenticated: boolean
 }
 
 /**
@@ -161,7 +186,12 @@ export interface ErrorNotice {
  */
 export function noticeFor(err: unknown, fallback: string): ErrorNotice {
   if (err instanceof ApiError) {
-    return { message: err.message, requestId: err.requestId, forbidden: err.status === 403 }
+    return {
+      message: err.message,
+      requestId: err.requestId,
+      forbidden: err.status === 403,
+      unauthenticated: err.status === 401,
+    }
   }
   report({
     app: APP_NAME,
@@ -170,7 +200,9 @@ export function noticeFor(err: unknown, fallback: string): ErrorNotice {
     stack: err instanceof Error ? (err.stack ?? null) : null,
     context: { fallback },
   })
-  return { message: fallback, requestId: undefined, forbidden: false }
+  // Not an ApiError at all, so there is no status to read: this is a bug in this bundle, and
+  // neither "sign in" nor "not yours" is a truthful thing to say about it.
+  return { message: fallback, requestId: undefined, forbidden: false, unauthenticated: false }
 }
 
 /* ---- the single-flight refresh ------------------------------------- */

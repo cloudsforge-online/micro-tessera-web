@@ -777,6 +777,61 @@ export const SCENARIOS: readonly Scenario[] = [
       'successful read.',
     blockedWhile: { absent: 'tessera/src/server.ts#confirmingWei' },
   },
+
+  /*
+   * ── The signed-out visitor, on the three screens that do not require a session ──────────────
+   *
+   * Written after a real browser, driven through the real gateway with NOTHING stubbed, showed
+   * that the public front door of this product greeted a stranger with "That did not load", a red
+   * alert, a support reference and a Try again button that could never succeed.
+   *
+   * One scenario per screen rather than one covering three, because `screen` is what this
+   * catalogue indexes by and a single entry would leave two screens looking untested.
+   */
+  {
+    id: 'BJ-TES-39',
+    what:
+      'a signed-out stranger following a link to the world is INVITED to sign in, rather than ' +
+      'shown a failure screen for a request that was answered correctly — the front door of the ' +
+      'product told every visitor without a session that the product was broken',
+    screen: 'world',
+    asserts: 'presentation',
+    tier: 'T1',
+    gate: true,
+    serverRule:
+      'micro-tessera authenticates every route including the reads, so GET /v1/wards answers 401 ' +
+      'to a request with no bearer token. That is the service behaving correctly; what this ' +
+      'scenario pins is which of the four states this client renders in response.',
+    ownedBy: 'tessera/src/server.ts#/v1/wards',
+    implementedIn: 'test/screens.test.ts',
+  },
+  {
+    id: 'BJ-TES-40',
+    what:
+      'the wards page invites a signed-out visitor rather than reporting that the Mosaic did not ' +
+      'load, and offers no retry button for a refusal that will repeat identically',
+    screen: 'wards',
+    asserts: 'presentation',
+    tier: 'T1',
+    serverRule:
+      'the same 401 from GET /v1/wards. The client decision under test is the state, not the code.',
+    ownedBy: 'tessera/src/server.ts#/v1/wards',
+    implementedIn: 'test/screens.test.ts',
+  },
+  {
+    id: 'BJ-TES-41',
+    what:
+      'the discover feed invites a signed-out visitor instead of failing, and does not leave an ' +
+      'empty ward selector above the invitation implying the page half-worked',
+    screen: 'discover',
+    asserts: 'presentation',
+    tier: 'T1',
+    serverRule:
+      'GET /v1/discover and GET /v1/wards both answer 401 without a bearer token; either one ' +
+      'refused makes the page unavailable to this visitor.',
+    ownedBy: 'tessera/src/server.ts#/v1/wards',
+    implementedIn: 'test/screens.test.ts',
+  },
 ]
 
 export const byId = (id: string): Scenario => {

@@ -23,6 +23,7 @@ import { KilnPage } from '../src/pages/kiln.tsx'
 import { LandPage } from '../src/pages/land.tsx'
 import { WardsPage } from '../src/pages/wards.tsx'
 import { WorkshopPage } from '../src/pages/workshop.tsx'
+import { WorldPage } from '../src/pages/world.tsx'
 import { WalletStrip } from '../src/components/wallet-strip.tsx'
 import { LISTING, OBJECT, PARCEL, RANKED, SIGNED_IN, TERMS, WARD } from './fixtures.ts'
 
@@ -468,4 +469,103 @@ test('BJ-TES-28 [T1/presentation] a real zero balance reads as zero, and an abse
       s.clean('the wallet strip, zero')
     },
   )
+})
+
+/* ── a signed-out visitor is invited, not told the world is broken ─────────────────────────── */
+
+/**
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * THE DEFECT A REAL BROWSER FOUND AND EVERY MOCKED JOURNEY MISSED.
+ *
+ * Driven through the live gateway with no session, `tessera.<apex>/` rendered:
+ *
+ *     ■ That did not load
+ *     a valid bearer token is required
+ *     Quote this to support: 79n3w6xpgdvkwh56
+ *     [Try again]
+ *
+ * — 196 characters of red alert, on the public front door of the product, offering a retry button
+ * that could never succeed and a support reference for a thing that had not gone wrong.
+ *
+ * IT IS NOT AN AUTH BUG. `tessera/src/server.ts:414` calls `authenticate(ctx, deps)` before
+ * `GET /v1/wards` returns anything, so 401 is the service answering correctly. And this app's own
+ * `src/lib/routes.ts` had already written down what should happen — "what a signed-out visitor
+ * actually gets is the screen and an invitation — not the world" — while three pages rendered
+ * `<Failed>` instead, because `noticeFor` singled out 403 and let 401 fall through to the generic
+ * failure.
+ *
+ * WHY NO MOCKED TEST COULD HAVE CAUGHT IT BEFORE: every scenario above passes `SESSION`, and a
+ * stub table answers 200 to a request carrying no token. The unauthenticated path was never once
+ * rendered. So these three cases assert it directly, with NO storage seeded — which is exactly
+ * what a stranger with a link has.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+/**
+ * The assertion, written once and named three times.
+ *
+ * The ids are spelled out LITERALLY in each `test(...)` title below rather than interpolated from
+ * a loop variable. That is not style: `test/journeys.test.ts`'s catalogue check greps this file's
+ * source for `<id>` followed by a space or a star, and a title built from `${id}` leaves the id
+ * inside an array of strings where the grep cannot see it. The first draft of this block did
+ * exactly that and the meta-test caught it — a scenario claiming a test in a file that appeared to
+ * have none. The check is right and the loop was wrong.
+ */
+async function assertInvitesSignIn(name: string, element: ReturnType<typeof h>): Promise<void> {
+  // What micro-tessera actually returns to a request with no bearer token. The message is the
+  // service's own sentence, transcribed from the live estate rather than invented.
+  const refused = {
+    status: 401,
+    body: { error: { code: 'unauthorized', message: 'a valid bearer token is required' } },
+  }
+  const routes: Routes = {
+    'GET /v1/wards': refused,
+    'GET /v1/parcels': refused,
+    'GET /v1/discover': refused,
+  }
+  // NO `storage`, deliberately: this is a visitor who has never signed in.
+  await withScreen(element, { routes }, async (s) => {
+    const text = s.text()
+
+    // The invitation is present, and it is a BUTTON — something the reader can act on.
+    s.byRole('button', 'Sign in')
+    assert.match(text, /Sign in to see/, `${name} did not invite a signed-out visitor to sign in`)
+
+    // And the failure screen is absent, in all three of the ways it announced itself.
+    assert.doesNotMatch(text, /That did not load/, `${name} still renders the failure screen`)
+    assert.doesNotMatch(
+      text,
+      /Try again/,
+      `${name} offers a retry that cannot succeed — the request will be refused identically`,
+    )
+    assert.doesNotMatch(
+      text,
+      /Quote this to support/,
+      `${name} prints a support reference for something that did not go wrong`,
+    )
+
+    // The class is the machine-readable half of the same claim: `.tw-state--failed` carries
+    // `role="alert"`, and a screen reader must not be told about an error that is not happening.
+    // A DOM-text check alone would pass on a page rendering the right words in the wrong role.
+    assert.equal(
+      s.document.querySelector('.tw-state--failed'),
+      null,
+      `${name} still mounts the failed state`,
+    )
+    assert.ok(
+      s.document.querySelector('.tw-state--signedout'),
+      `${name} did not mount the signed-out state`,
+    )
+  })
+}
+
+test('BJ-TES-39 \u2605 [T1/presentation] the world page invites a signed-out visitor to sign in, and does not call it a failure', async () => {
+  await assertInvitesSignIn('the world page', routed(h(WorldPage)))
+})
+
+test('BJ-TES-40 [T1/presentation] the wards page invites a signed-out visitor to sign in, and does not call it a failure', async () => {
+  await assertInvitesSignIn('the wards page', routed(h(WardsPage)))
+})
+
+test('BJ-TES-41 [T1/presentation] the discover page invites a signed-out visitor to sign in, and does not call it a failure', async () => {
+  await assertInvitesSignIn('the discover page', routed(h(DiscoverPage)))
 })

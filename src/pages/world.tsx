@@ -34,8 +34,11 @@ import { SpriteCache } from '../lib/sprites.ts'
 import { isArchetype, groundFor } from '../render/terrain.ts'
 import type { Placement, Scene } from '../render/scene.ts'
 import { useAsync } from '../lib/useAsync.ts'
+// The plain function, not `useSession().signIn`. They are the same redirect; this form keeps the
+// page mountable outside `<AuthProvider>`, which is how the screen tests render it.
+import { signIn } from '../lib/api.ts'
 import { WorldCanvas } from '../components/world-canvas.tsx'
-import { Empty, Failed, Loading } from '../components/states.tsx'
+import { Empty, Failed, Loading, SignedOut } from '../components/states.tsx'
 
 export function WorldPage() {
   const [params, setParams] = useSearchParams()
@@ -43,6 +46,11 @@ export function WorldPage() {
 
   const wards = useAsync(listWards, [], 'The wards could not be read.')
 
+  // This is the estate's FRONT DOOR for Tessera — the index route, deliberately not behind
+  // `ProtectedRoute` (see src/app.tsx and src/lib/routes.ts). Since the service authenticates its
+  // reads, a stranger following a link here gets a 401, and until now the first and only thing
+  // they saw was "That did not load". Checked before the generic failure for that reason.
+  if (wards.notice?.unauthenticated) return <SignedOut onSignIn={() => signIn()} />
   if (wards.notice) return <Failed notice={wards.notice} onRetry={wards.reload} />
   if (wards.data === undefined) return <Loading label="Finding the Mosaic" />
   if (wards.data.wards.length === 0) {

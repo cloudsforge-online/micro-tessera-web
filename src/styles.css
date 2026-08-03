@@ -227,6 +227,14 @@ body {
   color: var(--cf-warn);
 }
 
+/* An invitation, so it wears the surface's ACCENT rather than a status hue. Nothing is wrong:
+   `--cf-danger` here would paint "please sign in" in the colour this app reserves for an outage,
+   which is exactly the confusion the signed-out state was added to end. The accent is the
+   product's own, from `[data-cf-product]` in the design system, so it follows the substrate. */
+.tw-state--signedout .tw-state__icon {
+  color: var(--cf-accent);
+}
+
 .tw-state__title {
   font-size: var(--cf-text-lg);
   font-weight: 600;

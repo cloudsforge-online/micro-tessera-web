@@ -13,12 +13,21 @@
 import { useState } from 'react'
 import { listWards, wardPresence, type Ward } from '../lib/tessera.ts'
 import { useAsync } from '../lib/useAsync.ts'
-import { Empty, Failed, Loading } from '../components/states.tsx'
+// `signIn` from the api module, NOT `useSession().signIn` — they are the same function, and this
+// form does not require the page to be inside `<AuthProvider>`. The redirect needs no session
+// state to compute: it sends the browser to the Account portal with the current URL as the return
+// address. Taking it off the context keeps these pages renderable on their own, which is how
+// `test/screens.test.ts` mounts every one of them.
+import { signIn } from '../lib/api.ts'
+import { Empty, Failed, Loading, SignedOut } from '../components/states.tsx'
 
 export function WardsPage() {
   const { data, notice, reload } = useAsync(listWards, [], 'The wards could not be read.')
   const [open, setOpen] = useState<string | null>(null)
 
+  // The signed-out branch comes FIRST, because a 401 is also a `notice` and the generic failure
+  // below would otherwise claim the Mosaic did not load. It loaded; we were not asked politely.
+  if (notice?.unauthenticated) return <SignedOut onSignIn={() => signIn()} />
   if (notice) return <Failed notice={notice} onRetry={reload} />
   if (data === undefined) return <Loading label="Reading the Mosaic" />
 
