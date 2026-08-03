@@ -92,9 +92,32 @@ function FiringForm({ onFired }: { onFired: () => void }) {
   const [cold, setCold] = useState(false)
   const [watching, setWatching] = useState<WorldObject | null>(null)
 
+  /**
+   * The in-flight latch, and it is a REF rather than the `busy` state beside it.
+   *
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   * `if (busy) return` DOES NOT STOP A DOUBLE SUBMIT, AND THIS FORM SHIPPED WITH ONLY THAT.
+   *
+   * `busy` is read out of the render closure and `setBusy(true)` does not change it — React
+   * schedules a re-render, and until that render commits, `busy` is still `false` in the handler
+   * and `disabled={busy}` is still absent from the button. Two clicks dispatched before the
+   * browser gets a frame therefore both pass the check and both fire. Measured, not reasoned:
+   * `BJ-ADV-TES-01-H1` was written against this form and reported **two firings**.
+   *
+   * A ref is written and read synchronously, so the second click in the same tick sees the first
+   * one. It is cleared in `finally`, which covers the failure path — a latch that only clears on
+   * success is a form that can never be retried.
+   *
+   * This matters here more than on most forms: a firing has a real marginal cost in USD at the
+   * provider, so a duplicate is money as well as a duplicate object.
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   */
+  const inFlight = useRef(false)
+
   const submit = (event: React.FormEvent): void => {
     event.preventDefault()
-    if (busy) return
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setNotice(null)
     setCold(false)
@@ -109,7 +132,10 @@ function FiringForm({ onFired }: { onFired: () => void }) {
         if (err instanceof ApiError && err.code === 'kiln_unconfigured') setCold(true)
         else setNotice(noticeFor(err, 'The firing was not accepted.'))
       })
-      .finally(() => setBusy(false))
+      .finally(() => {
+        inFlight.current = false
+        setBusy(false)
+      })
   }
 
   return (

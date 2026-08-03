@@ -27,7 +27,7 @@
  * see it hold — which is a different thing from this client asserting that it does.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   createListing,
   getTerms,
@@ -124,13 +124,23 @@ function ListingForm({
   const [notice, setNotice] = useState<ErrorNotice | null>(null)
   const [malformed, setMalformed] = useState<string | null>(null)
 
+  /**
+   * The in-flight latch. A REF, because `busy` cannot stop a double submit — see the long note on
+   * the same latch in `src/pages/kiln.tsx`. `BJ-ADV-TES-02-H1` was written against this form and
+   * reported **two listings** from two clicks in one tick.
+   *
+   * Two listings for one object is not merely untidy: the second is a live, buyable offer of a
+   * thing the seller meant to sell once, at a price they set once.
+   */
+  const inFlight = useRef(false)
+
   // Only fired objects can be sold; a `firing` one has no bytes yet. This is not a business rule
   // being asserted — it is the list of things there is anything to sell.
   const sellable = objects.filter((o) => o.status === 'fired')
 
   const submit = (event: React.FormEvent): void => {
     event.preventDefault()
-    if (busy) return
+    if (inFlight.current) return
 
     // ════════════════════════════════════════════════════════════════════════════════════════
     // THE `BigInt('') === 0n` DOOR, SHUT ON THIS SIDE TOO.
@@ -147,6 +157,10 @@ function ListingForm({
       return
     }
     setMalformed(null)
+    // Latched HERE and not at the top of the handler: a malformed price returns above without
+    // sending anything, and a latch taken before that check would never be released, leaving the
+    // user with a form that has silently stopped submitting and no sentence saying why.
+    inFlight.current = true
     setBusy(true)
     setNotice(null)
     createListing({ objectId, priceWei, royaltyBps: Number(royaltyBps) })
@@ -155,7 +169,10 @@ function ListingForm({
         onListed()
       })
       .catch((err: unknown) => setNotice(noticeFor(err, 'The listing was not accepted.')))
-      .finally(() => setBusy(false))
+      .finally(() => {
+        inFlight.current = false
+        setBusy(false)
+      })
   }
 
   return (

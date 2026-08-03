@@ -166,6 +166,86 @@ export interface MountOptions {
    * what the browser hands the wallet cannot be written without one.
    */
   windowExtras?: Record<string, unknown>
+  /**
+   * The size every element reports for `clientWidth` / `clientHeight`.
+   *
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   * DECLARED, BECAUSE THE ALTERNATIVE IS A NUMBER NOBODY CHOSE.
+   *
+   * `happy-dom` does not lay pages out, so every element's `clientWidth` is 0. `WorldCanvas`
+   * reads its parent's and falls back to 960×540 when it gets nothing — which is a sensible
+   * fallback in a browser and a terrible one in a test, because the zoom floor is a comparison
+   * against the zoom at which a parcel FITS THE VIEWPORT, and 960×540 fits a Plot at 0.117 while
+   * 1440×900 fits it at 0.176. The floor is 0.17. One of those two viewports degrades a Plot and
+   * the other does not, and neither was chosen by the scenario.
+   *
+   * So a scenario that cares about zoom states the screen it is talking about, and gets the same
+   * arithmetic the measurement in docs/RENDER-BUDGET.md was taken at. This is NOT layout: nothing
+   * here positions anything, and no assertion in this suite reads a computed style.
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   */
+  viewport?: { readonly width: number; readonly height: number }
+  /**
+   * Give `<canvas>` a 2D context, so a canvas component's own render loop actually runs.
+   *
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   * `happy-dom` ANSWERS `getContext('2d')` WITH `null`, AND A COMPONENT THAT CHECKS FOR IT —
+   * WHICH `WorldCanvas` CORRECTLY DOES — THEN RETURNS BEFORE DRAWING ANYTHING.
+   *
+   * Without this the world screen mounts, renders a canvas, reports "The world has not drawn a
+   * frame yet", and every scenario about what the renderer decided passes against a component
+   * that never called it. That is the blank-page failure `assertMounted` exists to stop, one
+   * component further in — the body is long, so the 40-character floor is satisfied.
+   *
+   * The context RECORDS rather than rasterises, and the boundary that follows is the one this
+   * file's header already draws: nothing here asserts a pixel, a colour or a position. What a
+   * scenario may read is what the renderer REPORTED — its `FrameStats`, which the component
+   * renders as text into a live region — and `calls`, so a scenario can prove the loop ran at
+   * all rather than inferring it from a sentence.
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   */
+  canvas2d?: boolean
+}
+
+/** What the recording 2D context was asked to do. Counts, never pixels. */
+export interface CanvasCalls {
+  drawImage: number
+  fillRect: number
+  save: number
+  restore: number
+}
+
+/**
+ * A 2D context that keeps a tally and draws nothing.
+ *
+ * Every method the renderer calls is here. A method it calls that is NOT here would be a
+ * `TypeError` inside `requestAnimationFrame`, which React swallows into a console error — so the
+ * list is deliberately complete rather than a proxy that answers to everything, because a proxy
+ * would also answer to a method the renderer only THINKS it is calling.
+ */
+function recordingContext(calls: CanvasCalls): unknown {
+  return {
+    canvas: null,
+    fillStyle: '',
+    strokeStyle: '',
+    globalAlpha: 1,
+    imageSmoothingEnabled: true,
+    save: () => void (calls.save += 1),
+    restore: () => void (calls.restore += 1),
+    setTransform: () => undefined,
+    translate: () => undefined,
+    scale: () => undefined,
+    fillRect: () => void (calls.fillRect += 1),
+    strokeRect: () => undefined,
+    clearRect: () => undefined,
+    drawImage: () => void (calls.drawImage += 1),
+    beginPath: () => undefined,
+    closePath: () => undefined,
+    moveTo: () => undefined,
+    lineTo: () => undefined,
+    stroke: () => undefined,
+    fill: () => undefined,
+  }
 }
 
 export interface Screen {
@@ -174,6 +254,8 @@ export interface Screen {
   readonly api: Api
   /** Console errors and warnings the tree produced, including React's own. */
   readonly consoleErrors: string[]
+  /** What the recording 2D context was asked to do. All zero unless `canvas2d` was set. */
+  readonly canvas: CanvasCalls
   /** The visible text of the whole tree, whitespace-collapsed. */
   text(): string
   /** The text of one element, whitespace-collapsed. */
@@ -353,6 +435,43 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
     ;(win as unknown as Record<string, unknown>)[k] = v
   }
 
+  const canvasCalls: CanvasCalls = { drawImage: 0, fillRect: 0, save: 0, restore: 0 }
+  if (options.canvas2d === true) {
+    const ctx = recordingContext(canvasCalls)
+    const proto = (win as unknown as { HTMLCanvasElement: { prototype: object } }).HTMLCanvasElement
+      .prototype
+    Object.defineProperty(proto, 'getContext', {
+      configurable: true,
+      writable: true,
+      value: (kind: string) => (kind === '2d' ? ctx : null),
+    })
+  }
+  if (options.viewport) {
+    // On the window's OWN prototypes, so it is torn down with the window rather than leaking into
+    // the next scenario — `win.close()` in `unmount` takes the whole realm with it.
+    //
+    // BOTH `Element` and `HTMLElement`, and that is not belt-and-braces. happy-dom owns
+    // `clientWidth` on `HTMLElement.prototype`, which sits BETWEEN `HTMLDivElement` and `Element`
+    // in the chain — so defining it on `Element.prototype` alone is shadowed and reads 0, the
+    // component falls back to its own 960×540 default, and a Plot fits at 0.117 instead of 0.176.
+    // That is below the 0.17 floor, so the first version of this option reported a fitted Plot as
+    // DEGRADED and would have made the zoom-floor scenario assert the opposite of the truth.
+    const size = options.viewport
+    const w = win as unknown as Record<string, { prototype: object } | undefined>
+    for (const name of ['Element', 'HTMLElement']) {
+      const proto = w[name]?.prototype
+      if (!proto) continue
+      for (const [prop, value] of [
+        ['clientWidth', size.width],
+        ['clientHeight', size.height],
+        ['offsetWidth', size.width],
+        ['offsetHeight', size.height],
+      ] as const) {
+        Object.defineProperty(proto, prop, { configurable: true, get: () => value })
+      }
+    }
+  }
+
   const saved = new Map<string, PropertyDescriptor | undefined>()
   const g = globalThis as unknown as Record<string, unknown>
   for (const key of GLOBALS) {
@@ -525,6 +644,7 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
     document: doc,
     api,
     consoleErrors,
+    canvas: canvasCalls,
     text,
     textOf: (el) => squeeze(el?.textContent ?? ''),
     allByRole,

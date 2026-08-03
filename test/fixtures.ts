@@ -57,6 +57,27 @@ export const HOMESTEAD: Parcel = {
   isWorkshop: false,
 }
 
+/**
+ * A parcel of a given tier, with the tiles and cap §6.2 gives that tier.
+ *
+ * The cap is written out per tier rather than computed from the tiles, even though it IS five per
+ * eight tiles: a fixture that derived it would agree with any client that derived it, and
+ * `BJ-TES-06` exists to prove this client does not. A scenario that wants a cap the arithmetic
+ * would not produce passes one.
+ */
+export function parcelOfTier(
+  tier: 'homestead' | 'plot' | 'court' | 'quarter',
+  over: Partial<Parcel> = {},
+): Parcel {
+  const shape = {
+    homestead: { size: 16, tiles: 256, objectCap: 160 },
+    plot: { size: 32, tiles: 1024, objectCap: 640 },
+    court: { size: 64, tiles: 4096, objectCap: 2560 },
+    quarter: { size: 128, tiles: 16384, objectCap: 10240 },
+  }[tier]
+  return { ...PARCEL, tier, ...shape, ...over }
+}
+
 export function placements(count: number): WirePlacement[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `44444444-4444-4444-8444-${String(i).padStart(12, '0')}`,

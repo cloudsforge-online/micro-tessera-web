@@ -20,7 +20,7 @@
  *    asserting a business rule, and a client-side test of the hidden option would pass against a
  *    service that had quietly stopped enforcing it.
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   bankParcel,
   claimParcel,
@@ -101,9 +101,21 @@ function ClaimForm({
   const [notice, setNotice] = useState<ErrorNotice | null>(null)
   const [claimed, setClaimed] = useState<Parcel | null>(null)
 
+  /**
+   * The in-flight latch. A REF, for the reason spelled out at length in `src/pages/kiln.tsx`:
+   * `busy` is read out of the render closure and `setBusy(true)` does not change it, so two clicks
+   * in one tick both pass an `if (busy) return` and both send. `BJ-ADV-TES-03-H1` drives it.
+   *
+   * A duplicate claim is not harmless even though the second one will be refused: the origin is a
+   * tile coordinate the user chose, so the second request races the first for the same rectangle
+   * and whichever loses produces a refusal the user did not ask for and cannot interpret.
+   */
+  const inFlight = useRef(false)
+
   const submit = (event: React.FormEvent): void => {
     event.preventDefault()
-    if (busy) return
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setNotice(null)
     setClaimed(null)
@@ -119,7 +131,10 @@ function ClaimForm({
         // about which rule was broken.
         setNotice(noticeFor(err, 'The claim was not accepted.')),
       )
-      .finally(() => setBusy(false))
+      .finally(() => {
+        inFlight.current = false
+        setBusy(false)
+      })
   }
 
   return (
@@ -241,15 +256,22 @@ function ParcelList({ parcels, onChanged }: { parcels: readonly Parcel[]; onChan
 function ParcelRow({ parcel, onChanged }: { parcel: Parcel; onChanged: () => void }) {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<ErrorNotice | null>(null)
+  // The same latch as the claim form above, for the same reason, on the same row's two controls:
+  // banking twice spends the one free extension a parcel gets in a year on a single double-click.
+  const inFlight = useRef(false)
 
   const act = (work: () => Promise<unknown>, fallback: string): void => {
-    if (busy) return
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setNotice(null)
     work()
       .then(onChanged)
       .catch((err: unknown) => setNotice(noticeFor(err, fallback)))
-      .finally(() => setBusy(false))
+      .finally(() => {
+        inFlight.current = false
+        setBusy(false)
+      })
   }
 
   return (

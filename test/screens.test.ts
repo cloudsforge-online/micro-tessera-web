@@ -70,7 +70,7 @@ test('a screen that renders nothing is REFUSED, not returned', async () => {
 
 /* ── the wards page ────────────────────────────────────────────────────────────────────────── */
 
-test('the wards page renders a ward, and opens who is in it — with the instance', async () => {
+test('BJ-TES-07 ★ [T1/presentation] the wards page renders a ward, and opens who is in it — with the instance', async () => {
   const routes: Routes = {
     'GET /v1/wards': { body: { wards: [WARD] } },
     'GET /v1/wards/': {
@@ -103,7 +103,7 @@ test('the wards page renders a ward, and opens who is in it — with the instanc
 
 /* ── the land page ─────────────────────────────────────────────────────────────────────────── */
 
-test('claiming ground sends no price, and there is no price field to send one from', async () => {
+test('BJ-TES-09 ★ [T1/client-request] claiming ground sends no price, and there is no price field to send one from', async () => {
   const routes: Routes = {
     'GET /v1/me/parcels': { body: { parcels: [PARCEL] } },
     'GET /v1/wards': { body: { wards: [WARD] } },
@@ -139,7 +139,7 @@ test('claiming ground sends no price, and there is no price field to send one fr
   })
 })
 
-test('the Homestead tier is offered even though a second one is unrepresentable', async () => {
+test('BJ-TES-10 [T1/presentation] the Homestead tier is offered even though a second one is unrepresentable', async () => {
   const routes: Routes = {
     'GET /v1/me/parcels': { body: { parcels: [PARCEL] } },
     'GET /v1/wards': { body: { wards: [WARD] } },
@@ -162,7 +162,7 @@ test('the Homestead tier is offered even though a second one is unrepresentable'
 
 /* ── the discover page ─────────────────────────────────────────────────────────────────────── */
 
-test('discovery sends no ordering parameter, and shows both inputs beside the score', async () => {
+test('BJ-TES-20 ★ [T1/client-request] discovery sends no ordering parameter, and shows both inputs beside the score', async () => {
   const routes: Routes = {
     'GET /v1/wards': { body: { wards: [WARD] } },
     'GET /v1/discover': { body: { parcels: RANKED } },
@@ -195,7 +195,7 @@ test('discovery sends no ordering parameter, and shows both inputs beside the sc
 
 /* ── the workshop ──────────────────────────────────────────────────────────────────────────── */
 
-test('the workshop prints the terms the service sent, and does not derive them', async () => {
+test('BJ-TES-23 ★ [T1/presentation] the workshop prints the terms the service sent, and does not derive them', async () => {
   const routes: Routes = {
     'GET /v1/terms': { body: TERMS },
     'GET /v1/listings': { body: { listings: [LISTING] } },
@@ -214,7 +214,7 @@ test('the workshop prints the terms the service sent, and does not derive them',
   })
 })
 
-test('the workshop reports the service withdrawing the equal-terms claim', async () => {
+test('BJ-TES-24 [T1/presentation] the workshop reports the service withdrawing the equal-terms claim', async () => {
   // The converse of the test above, and the reason that one is not self-referential: the page is
   // fed `identicalForEveryAccount: false` and must say something DIFFERENT. A page that printed
   // the same sentence either way would be comparing a constant with itself.
@@ -234,7 +234,7 @@ test('the workshop reports the service withdrawing the equal-terms claim', async
   })
 })
 
-test('a blank price never leaves the form — BigInt("") is 0n', async () => {
+test('BJ-TES-26 ★ [T1/client-request] a blank price never leaves the form — BigInt("") is 0n', async () => {
   const routes: Routes = {
     'GET /v1/terms': { body: TERMS },
     'GET /v1/listings': { body: { listings: [] } },
@@ -298,7 +298,7 @@ test('a blank price never leaves the form — BigInt("") is 0n', async () => {
 
 /* ── the Kiln ──────────────────────────────────────────────────────────────────────────────── */
 
-test('a cold Kiln says so, in the words the service uses, rather than as a failure', async () => {
+test('BJ-TES-16 ★ [T1/presentation] a cold Kiln says so, in the words the service uses, rather than as a failure', async () => {
   const routes: Routes = {
     'GET /v1/objects': { body: { objects: [] } },
     'POST /v1/kiln/firings': {
@@ -329,7 +329,7 @@ test('a cold Kiln says so, in the words the service uses, rather than as a failu
   })
 })
 
-test('the Kiln offers two footprints, because there are two', async () => {
+test('BJ-TES-17 [T1/presentation] the Kiln offers two footprints, because there are two', async () => {
   await withScreen(
     routed(h(KilnPage)),
     { ...SESSION, routes: { 'GET /v1/objects': { body: { objects: [] } } } },
@@ -341,7 +341,7 @@ test('the Kiln offers two footprints, because there are two', async () => {
   )
 })
 
-test('the seed set is named as absent rather than substituted', async () => {
+test('BJ-TES-18 [T1/presentation] the seed set is named as absent rather than substituted', async () => {
   await withScreen(
     routed(h(KilnPage)),
     { ...SESSION, routes: { 'GET /v1/objects': { body: { objects: [] } } } },
@@ -359,7 +359,7 @@ test('the seed set is named as absent rather than substituted', async () => {
 
 /* ── the wallet strip ──────────────────────────────────────────────────────────────────────── */
 
-test('a 503 from the balance route prints no digit, and says so rather than showing zero', async () => {
+test('BJ-TES-27 ★ [T1/presentation] a 503 from the balance route prints no digit, and says so rather than showing zero', async () => {
   // The route EXISTS now. What it answers when the ledger is unconfigured or unreachable is a 503
   // with no figures — its own handler says "a player looking at their own earnings must never be
   // shown a confident zero that means 'we did not ask'". This is the client half of that.
@@ -403,7 +403,7 @@ test('a 503 from the balance route prints no digit, and says so rather than show
   })
 })
 
-test('the wallet strip reads the balance route, and asks for nobody in particular', async () => {
+test('BJ-TES-29 [T1/client-request] the wallet strip reads the balance route, and asks for nobody in particular', async () => {
   // The converse of the test above, so that one is not passing because the strip is simply broken.
   // A 200 must produce the figures — and the request must carry no `subject`: the route reads the
   // authenticated one, and a client-supplied subject is somebody else's earnings on your screen.
@@ -446,7 +446,7 @@ test('the wallet strip reads the balance route, and asks for nobody in particula
   })
 })
 
-test('a real zero balance reads as zero, and an absent one does not', async () => {
+test('BJ-TES-28 [T1/presentation] a real zero balance reads as zero, and an absent one does not', async () => {
   // The `wei === null` versus `!wei` distinction, driven rather than commented. `!0n` is true, so
   // a falsy check would tell a user with no money that the service was broken.
   await withScreen(
