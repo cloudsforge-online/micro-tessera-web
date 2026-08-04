@@ -44,6 +44,18 @@ import { cloudsforgeHosts, type CloudsForgeHosts, type SurfaceKey } from '@cloud
  * highlight nothing at all even once it exists.
  */
 export const PRODUCT: SurfaceKey = 'worlds'
+/**
+ * The surface this application IS, for the footer. **Deliberately not `'worlds'`.**
+ *
+ * The two constants answer two different questions and collapsing them would make one of them
+ * wrong. `PRODUCT` is what the BAR marks current, and the switcher is a list of platforms a
+ * player chooses between — Tessera is played through Forge Worlds, so `worlds` is the honest
+ * highlight there. The FOOTER lists surfaces, and Tessera is one: it has its own registry row and
+ * its own hostname (`tessera` in @cloudsforge/ui's surfaces.ts). So "you are here" in the footer is
+ * Tessera, and the footer's closing line reads Tessera's own blurb rather than Forge Worlds'.
+ */
+export const FOOTER_SURFACE: SurfaceKey = 'tessera'
+
 
 /** The name reported to the observability ingest and shown in error copy. */
 export const APP_NAME = 'tessera-web'

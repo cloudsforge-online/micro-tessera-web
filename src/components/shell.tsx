@@ -16,9 +16,9 @@
  * unauthenticated readiness surface, and to say why here rather than ship a probe that is wrong
  * half the time.
  */
-import { CloudsForgeBar } from '@cloudsforge/ui'
+import { CloudsForgeBar, CloudsForgeFooter } from '@cloudsforge/ui'
 import { NavLink, Outlet } from 'react-router-dom'
-import { PRODUCT } from '../lib/hosts.ts'
+import { FOOTER_SURFACE, PRODUCT } from '../lib/hosts.ts'
 import { useSession } from '../lib/auth.tsx'
 import { NAV } from '../lib/routes.ts'
 import { WalletStrip } from './wallet-strip.tsx'
@@ -71,6 +71,16 @@ export function AppShell() {
       <main className="tw-main" id="main">
         <Outlet />
       </main>
+
+      {/*
+        The company footer, from @cloudsforge/ui. Every link in it is derived from the surface
+        registry, so a new product appears here without this file changing — which is the reason
+        the estate is not growing a fifth hand-rolled footer beside the four it already had.
+
+        `current` is FOOTER_SURFACE, not the bar's surface: see lib/hosts.ts for why those are two
+        different questions. `account` decides only whether the operator surfaces are offered.
+      */}
+      <CloudsForgeFooter current={FOOTER_SURFACE} account={account} />
     </>
   )
 }
