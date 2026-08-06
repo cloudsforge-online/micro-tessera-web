@@ -117,7 +117,7 @@ test('BJ-TES-09 ★ [T1/client-request] claiming ground sends no price, and ther
     const select = s.allByRole('combobox')[0]
     assert.ok(select, 'there is no ward select')
     await s.type(select, WARD.id)
-    await s.click(s.byRole('button', 'Claim this ground'))
+    await s.click(s.byRole('button', 'This ground is mine'))
 
     const posted = s.api.matching('POST /v1/parcels')
     assert.equal(posted.length, 1, 'the claim was not sent exactly once')
@@ -169,7 +169,7 @@ test('BJ-TES-20 ★ [T1/client-request] discovery sends no ordering parameter, a
     'GET /v1/discover': { body: { parcels: RANKED } },
   }
   await withScreen(routed(h(DiscoverPage)), { ...SESSION, routes }, async (s) => {
-    s.byRole('heading', 'Where people are going')
+    s.byRole('heading', 'Where the crowds are')
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // §7.1's first refusal, asserted as an absence on the WIRE: "no promoted placement, no paid
@@ -208,7 +208,7 @@ test('BJ-TES-23 ★ [T1/presentation] the workshop prints the terms the service 
     assert.match(s.text(), /10%/, 'the royalty cap is not shown')
     assert.match(
       s.text(),
-      /Every account, identically/,
+      /Everybody, at exactly these numbers/,
       'the identicalForEveryAccount flag the service sent is not shown',
     )
     s.clean('the workshop')
@@ -227,10 +227,10 @@ test('BJ-TES-24 [T1/presentation] the workshop reports the service withdrawing t
   await withScreen(routed(h(WorkshopPage)), { ...SESSION, routes }, async (s) => {
     assert.doesNotMatch(
       s.text(),
-      /Every account, identically/,
+      /Everybody, at exactly these numbers/,
       'the page claims equal terms the service did not state',
     )
-    assert.match(s.text(), /no longer stating/, 'the page does not report the withdrawn claim')
+    assert.match(s.text(), /stopped saying/, 'the page does not report the withdrawn claim')
     s.clean('the workshop, terms withdrawn')
   })
 })
@@ -255,7 +255,7 @@ test('BJ-TES-26 ★ [T1/client-request] a blank price never leaves the form — 
     // this test looked for the client's own refusal message and went red, because that message
     // never appears for an empty required field in a browser. The test was wrong, not the form.
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    await s.click(s.byRole('button', 'List it'))
+    await s.click(s.byRole('button', 'Put it up'))
     assert.equal(
       s.api.matching('POST /v1/listings').length,
       0,
@@ -268,7 +268,7 @@ test('BJ-TES-26 ★ [T1/client-request] a blank price never leaves the form — 
     const price = s.allByRole('textbox').find((el) => el.getAttribute('inputmode') === 'numeric')
     assert.ok(price, 'there is no price field')
     await s.type(price, '0')
-    await s.click(s.byRole('button', 'List it'))
+    await s.click(s.byRole('button', 'Put it up'))
     assert.equal(
       s.api.matching('POST /v1/listings').length,
       0,
@@ -280,13 +280,13 @@ test('BJ-TES-26 ★ [T1/client-request] a blank price never leaves the form — 
     // must still not reach the wire, because the failure the user sees should be a sentence next
     // to the field and not an exception in a handler.
     await s.type(price, '12.5')
-    await s.click(s.byRole('button', 'List it'))
+    await s.click(s.byRole('button', 'Put it up'))
     assert.equal(s.api.matching('POST /v1/listings').length, 0, 'a fractional price was sent')
 
     // And the same form DOES send a real price, so the checks above are not passing because the
     // button is simply broken.
     await s.type(price, '400')
-    await s.click(s.byRole('button', 'List it'))
+    await s.click(s.byRole('button', 'Put it up'))
 
     const sent = s.api.matching('POST /v1/listings')
     assert.equal(sent.length, 1, 'a valid price was not sent')
@@ -321,7 +321,7 @@ test('BJ-TES-16 ★ [T1/presentation] a cold Kiln says so, in the words the serv
 
     assert.match(
       s.text(),
-      /supported state rather than an outage/,
+      /how this environment is meant to run, not a fault/,
       'a 503 kiln_unconfigured was rendered as a generic failure',
     )
     // `role="status"`, not `alert`: nothing is wrong, and retrying will not help.
@@ -350,7 +350,7 @@ test('BJ-TES-18 [T1/presentation] the seed set is named as absent rather than su
       s.byRole('heading', 'The 96 seed objects')
       assert.match(
         s.text(),
-        /serves no route that lists them/,
+        /the service has no way to list them/,
         'the missing seed-object route is not stated',
       )
       s.clean('the seed gap')
@@ -397,7 +397,7 @@ test('BJ-TES-27 ★ [T1/presentation] a 503 from the balance route prints no dig
     assert.match(text, /Available/, 'Available is not labelled')
     assert.match(text, /Clearing/, 'Clearing is not labelled')
     assert.match(text, /Confirming/, 'Confirming is not labelled')
-    assert.match(text, /in no total/, 'the confirming figure is not excluded from the totals')
+    assert.match(text, /counted in neither figure above/, 'the confirming figure is not excluded from the totals')
     assert.match(text, /GET \/v1\/me\/balances/, 'the route that declined to answer is not named')
     assert.match(text, /not a balance of zero/, "the service's own words are not shown")
     s.clean('the wallet strip, 503')
@@ -481,7 +481,7 @@ test('BJ-TES-28 [T1/presentation] a real zero balance reads as zero, and an abse
  *
  *     ■ That did not load
  *     a valid bearer token is required
- *     Quote this to support: 79n3w6xpgdvkwh56
+ *     Give support this reference: 79n3w6xpgdvkwh56
  *     [Try again]
  *
  * — 196 characters of red alert, on the public front door of the product, offering a retry button
@@ -528,10 +528,10 @@ async function assertInvitesSignIn(name: string, element: ReturnType<typeof h>):
 
     // The invitation is present, and it is a BUTTON — something the reader can act on.
     s.byRole('button', 'Sign in')
-    assert.match(text, /Sign in to see/, `${name} did not invite a signed-out visitor to sign in`)
+    assert.match(text, /Sign in and\b/, `${name} did not invite a signed-out visitor to sign in`)
 
     // And the failure screen is absent, in all three of the ways it announced itself.
-    assert.doesNotMatch(text, /That did not load/, `${name} still renders the failure screen`)
+    assert.doesNotMatch(text, /That would not load/, `${name} still renders the failure screen`)
     assert.doesNotMatch(
       text,
       /Try again/,
@@ -539,7 +539,7 @@ async function assertInvitesSignIn(name: string, element: ReturnType<typeof h>):
     )
     assert.doesNotMatch(
       text,
-      /Quote this to support/,
+      /Give support this reference/,
       `${name} prints a support reference for something that did not go wrong`,
     )
 

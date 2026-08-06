@@ -37,15 +37,17 @@ export function WardsPage() {
       <header className="tw-page-head">
         <h1>The Mosaic</h1>
         <p className="tw-page-head__meta">
-          Supply is elastic; location is not. A ward that crosses 70% claimed mints the next one,
-          so there is always free ground — what there is not always is good ground.
+          The world is made of wards, and it grows to fit whoever turns up: once a ward is 70%
+          taken, the next one opens. So you will never be shut out of somewhere to build. Being
+          next door to the places people actually visit is the scarce part, and no amount of money
+          buys it.
         </p>
       </header>
 
       {wards.length === 0 && (
         <Empty
-          title="No ward has opened yet"
-          hint="The Commons opens first, then eleven themed wards. Nothing is claimable until one does."
+          title="No ward has opened"
+          hint="The Commons comes first, and eleven wards with characters of their own follow it. Until one is open there is nowhere to put a deed."
         />
       )}
 

@@ -67,7 +67,7 @@ export function Empty({
 export function Failed({
   notice,
   onRetry,
-  title = 'That did not load',
+  title = 'That would not load',
 }: {
   notice: ErrorNotice
   onRetry?: (() => void) | undefined
@@ -82,7 +82,7 @@ export function Failed({
       <p className="tw-state__hint">{notice.message}</p>
       {notice.requestId && (
         <p className="tw-state__meta">
-          Quote this to support: <code className="cf-num tw-reqid">{notice.requestId}</code>
+          Give support this reference: <code className="cf-num tw-reqid">{notice.requestId}</code>
         </p>
       )}
       {onRetry && (
@@ -125,8 +125,8 @@ export function Failed({
  */
 export function SignedOut({
   onSignIn,
-  title = 'Sign in to see the Mosaic',
-  hint = 'Tessera asks who you are before it will show you the world. Nothing here is broken — the wards are open, and one sign-in puts you in them.',
+  title = 'Sign in and the world opens',
+  hint = 'Tessera wants to know who is walking in before it shows you around. Nothing is wrong — the wards are open, and the same account works across every Forge Worlds title.',
 }: {
   onSignIn?: (() => void) | undefined
   title?: string | undefined
@@ -152,7 +152,7 @@ export function SignedOut({
 
 export function Forbidden({
   notice,
-  title = 'That is not yours to see',
+  title = 'Somebody else owns this',
 }: {
   notice?: ErrorNotice | undefined
   title?: string | undefined

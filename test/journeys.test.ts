@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, it, test } from 'node:test'
 import { createElement as h, type ReactElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import { MAIN_ID } from '@cloudsforge/ui'
 
 import { withScreen, type Routes, type Screen as Rendered } from './dom.ts'
 import { assetSetAvailable, receiptFromManifest } from './asset-set.ts'
@@ -441,7 +442,7 @@ describe('BJ-TES — the world', () => {
       'GET /v1/parcels/': { body: { parcel, placements: placements(2) } },
     }
     await withScreen(page(h(WorldPage), `/?parcel=${parcel.id}`), { ...SESSION, ...WORLD, routes }, async (s) => {
-      assert.match(s.text(), /of 999 this parcel can hold/, 'the cap on screen is not the response\'s')
+      assert.match(s.text(), /of the 999 this parcel takes/, 'the cap on screen is not the response\'s')
       assert.doesNotMatch(
         s.text(),
         /of 640 this parcel can hold/,
@@ -449,7 +450,7 @@ describe('BJ-TES — the world', () => {
       )
       assert.match(
         s.text(),
-        /not purchasable at any price/,
+        /no amount of money raises it/,
         'the cap is not described as the rendering budget it is',
       )
     })
@@ -533,14 +534,14 @@ describe('BJ-TES — the land', () => {
     ]
     await withScreen(page(h(LandPage)), { ...SESSION, routes: landRoutes(parcels) }, async (s) => {
       const text = s.text()
-      assert.match(text, /Live\./, 'a live parcel does not say so')
-      assert.match(text, /extended to 270 days/, 'a banked parcel does not say what banking bought')
+      assert.match(text, /In use\./, 'a live parcel does not say so')
+      assert.match(text, /270 days on the clock instead of 90/, 'a banked parcel does not say what banking bought')
       assert.match(
         text,
-        /no visitor and no edit for 90 days\. Contestable after a further 30/,
+        /nobody has visited or changed anything for 90 days\. Another 30 and it is up for grabs/,
         'a fallow parcel does not say what fallow means or when it gets worse',
       )
-      assert.match(text, /anyone may claim this now/, 'a contestable parcel does not say so')
+      assert.match(text, /anybody can take this one now/, 'a contestable parcel does not say so')
 
       // ════════════════════════════════════════════════════════════════════════════════════════
       // The one that matters. An unrecognised state falls through to ITSELF — visibly odd, which
@@ -548,7 +549,7 @@ describe('BJ-TES — the land', () => {
       // ════════════════════════════════════════════════════════════════════════════════════════
       assert.match(text, /sequestered/, 'an unrecognised fallow state was not shown at all')
       assert.equal(
-        (text.match(/Live\./g) ?? []).length,
+        (text.match(/In use\./g) ?? []).length,
         1,
         'more than one parcel reads as Live — an unrecognised state was mapped onto the default',
       )
@@ -601,11 +602,11 @@ describe('BJ-TES — the land', () => {
     })
   })
 
-  it('BJ-ADV-TES-03-H1 [T1/client-request] double-pressing Claim this ground claims once', async () => {
+  it('BJ-ADV-TES-03-H1 [T1/client-request] double-pressing This ground is mine claims once', async () => {
     const routes = landRoutes([], { 'POST /v1/parcels': { status: 201, body: { parcel: PARCEL } } })
     await withScreen(page(h(LandPage)), { ...SESSION, routes }, async (s) => {
       await s.type(s.allByRole('combobox')[0] as Element, WARD.id)
-      const claim = s.byRole('button', 'Claim this ground')
+      const claim = s.byRole('button', 'This ground is mine')
       // No flush between them, which is the whole hazard: `disabled={busy}` has not been committed
       // yet and neither has the state a `if (busy) return` reads.
       s.clickNoFlush(claim)
@@ -667,10 +668,10 @@ describe('BJ-TES — the Kiln', () => {
       // nothing about an object existing.
       assert.match(
         s.text(),
-        /In the Kiln\. This takes about a minute\./,
+        /It is in the Kiln\. Give it about a minute\./,
         'a 202 was rendered as a finished firing',
       )
-      assert.doesNotMatch(s.text(), /Fired\. Its identity is/, 'the page claimed a finished object')
+      assert.doesNotMatch(s.text(), /Out of the Kiln\. It answers to/, 'the page claimed a finished object')
       assert.ok(
         s.api.matching('GET /v1/objects/').length >= 1,
         'the statusUrl was never polled, so the 202 WAS the answer',
@@ -680,10 +681,10 @@ describe('BJ-TES — the Kiln', () => {
       await s.settle(2_400)
       assert.match(
         s.text(),
-        new RegExp(`Fired\\. Its identity is ${FIRED.checksum}`),
+        new RegExp(`Out of the Kiln\\. It answers to ${FIRED.checksum}`),
         'the terminal state from the poll is not what the page reports',
       )
-      assert.match(s.text(), /the sha256 of its own bytes/, 'the identity is not named as the hash')
+      assert.match(s.text(), /a fingerprint taken from the thing itself/, 'the identity is not named as the hash')
     })
   })
 
@@ -701,10 +702,10 @@ describe('BJ-TES — the Kiln', () => {
       await fire(s)
       await s.settle(2_400)
 
-      assert.match(s.text(), /The firing failed/, 'a failed firing is not reported')
+      assert.match(s.text(), /That one did not come out/, 'a failed firing is not reported')
       assert.match(
         s.text(),
-        /Nothing was charged for a firing that produced nothing/,
+        /You were not charged for a firing that gave you nothing/,
         'the page does not say that a failure costs nothing — which is the first thing a creator ' +
           'paying per firing needs to know',
       )
@@ -905,7 +906,7 @@ describe('BJ-TES — the workshop', () => {
           'the royalty shown is not the service\'s — a client multiplying 400 by 500 bps prints 20',
         )
         assert.equal(
-          cell['You receive'],
+          cell['You keep'],
           '380 Sparks',
           'the proceeds shown are not the remainder the service computed',
         )
@@ -915,7 +916,7 @@ describe('BJ-TES — the workshop', () => {
 
         // All four are present, which is what lets a seller watch the identity hold rather than
         // take it on trust — §8.4's "the arithmetic cannot leak", made visible.
-        s.before('Platform fee', 'You receive', 'the split is not laid out fee-then-proceeds')
+        s.before('Platform fee', 'You keep', 'the split is not laid out fee-then-proceeds')
       },
     )
   })
@@ -939,13 +940,13 @@ describe('BJ-TES — the workshop', () => {
       // through a refusal.
       assert.match(
         s.text(),
-        new RegExp(`The cap is ${TERMS.maxRoyaltyBps / 100}%`),
+        new RegExp(`The most you may ask is ${TERMS.maxRoyaltyBps / 100}%`),
         'the cap the service sent is not stated beside the field',
       )
     })
   })
 
-  it('★ BJ-ADV-TES-02-H1 [T1/client-request] double-pressing List it lists once', async () => {
+  it('★ BJ-ADV-TES-02-H1 [T1/client-request] double-pressing Put it up lists once', async () => {
     // The same defect as BJ-ADV-TES-01-H1 and the same measurement: this form produced TWO
     // listings from two clicks in one tick. A duplicate here is a second live, buyable offer of a
     // thing the seller meant to sell once.
@@ -961,7 +962,7 @@ describe('BJ-TES — the workshop', () => {
         assert.ok(price, 'there is no price field')
         await s.type(price, '400')
 
-        const button = s.byRole('button', 'List it')
+        const button = s.byRole('button', 'Put it up')
         s.clickNoFlush(button)
         s.clickNoFlush(button)
         await s.settle(20)
@@ -998,7 +999,7 @@ describe('BJ-TES — the workshop', () => {
         const price = s.allByRole('textbox').find((el) => el.getAttribute('inputmode') === 'numeric')
         assert.ok(price, 'there is no price field')
         await s.type(price, '400')
-        await s.click(s.byRole('button', 'List it'))
+        await s.click(s.byRole('button', 'Put it up'))
 
         // Doc 22 §3.4: the assertion is on the SENTENCE THE USER IS SHOWN, never on the refusal.
         // The service's own words, not a sentence this client invented about which rule was broken.
@@ -1031,7 +1032,7 @@ describe('BJ-TES — the workshop', () => {
         // product that looks broken.
         // ══════════════════════════════════════════════════════════════════════════════════════
         assert.match(s.text(), /Reading the terms/, 'the slow section is not marked as pending')
-        assert.match(s.text(), /What you have listed/, 'the rest of the page did not paint')
+        assert.match(s.text(), /On sale from you/, 'the rest of the page did not paint')
         assert.match(s.text(), /400 Sparks/, 'the listings that DID answer are not rendered')
 
         // Pending, not failed: a spinner and an error are different things and a user who is told
@@ -1044,7 +1045,7 @@ describe('BJ-TES — the workshop', () => {
 
         // And nothing is left hanging: it arrives.
         await s.settle(600)
-        assert.match(s.text(), /2\.5% of every sale/, 'the slow read never resolved')
+        assert.match(s.text(), /2\.5% of what a buyer pays/, 'the slow read never resolved')
       },
     )
   })
@@ -1077,7 +1078,7 @@ describe('BJ-TES — the workshop', () => {
           )
         }
         assert.ok(
-          alerts.every((a) => /Quote this to support/.test(a) || !/req-/.test(a)),
+          alerts.every((a) => /Give support this reference/.test(a) || !/req-/.test(a)),
           'an id is on screen without saying what it is for',
         )
       },
@@ -1098,7 +1099,7 @@ describe('BJ-TESSERA — the surface', () => {
     assert.equal(routeFor(unowned), undefined, 'the fixture address is a declared route')
 
     await withScreen(h(App), anonymous(unowned), async (s) => {
-      assert.match(s.text(), /There is nothing at this address/, 'the not-found screen did not render')
+      assert.match(s.text(), /Nothing stands at this address/, 'the not-found screen did not render')
 
       // INSIDE the shell, which is what makes a wrong address a page of this app rather than a
       // bare error: the navigation is still there and still usable.
@@ -1149,14 +1150,33 @@ describe('BJ-TESSERA — the surface', () => {
 
       // The skip link is the FIRST focusable thing in the document, which is the only position
       // that makes it useful, and it points at the landmark rather than at a decoration.
+      //
+      // `MAIN_ID` from @cloudsforge/ui rather than the literal `#main` this asserted before: the
+      // link and its target are now `SkipLink` and `MainRegion`, which compose the href and the id
+      // from that ONE constant. Restating it here would be a third copy that could disagree with
+      // both — and disagree silently, since a skip link pointing at nothing still renders, still
+      // takes focus, and still looks exactly like a working one.
       const first = s.tabbables()[0]
       assert.ok(first, 'nothing on this page is focusable')
       assert.equal(
         first.getAttribute('href'),
-        '#main',
+        `#${MAIN_ID}`,
         `the first focusable element is not the skip link but ${first.tagName.toLowerCase()}`,
       )
-      assert.ok(s.document.getElementById('main'), 'the skip link points at nothing')
+      const target = s.document.getElementById(MAIN_ID)
+      assert.ok(target, 'the skip link points at nothing')
+      // ══════════════════════════════════════════════════════════════════════════════════════
+      // AND THE HALF THIS SURFACE WAS MISSING. A `<main>` is not focusable, so before
+      // `MainRegion` the fragment scrolled the page, left focus on the link itself, and sent the
+      // next Tab back into the company bar — a skip link that a keyboard reader activates and
+      // cannot tell whether anything happened, which is the failure the old comment in
+      // shell.tsx claimed to be guarding against.
+      // ══════════════════════════════════════════════════════════════════════════════════════
+      assert.equal(
+        target.getAttribute('tabindex'),
+        '-1',
+        'the main landmark is not focusable, so following the skip link leaves focus on the link',
+      )
 
       // Heading order, with no level skipped: a reader moving by heading must not fall from h1 to
       // h3 and have to guess whether they missed a section.

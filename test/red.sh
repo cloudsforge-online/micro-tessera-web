@@ -411,11 +411,20 @@ mutate 'the 404 screen offers every declared route' src/pages/not-found.tsx \
   '{ROUTES.map((route) => (' \
   '{ROUTES.slice(1).map((route) => ('
 
-# 43. The skip link points at the main landmark. One that points at nothing is a control a keyboard
-#     reader activates and cannot tell whether anything happened.
+# 43. The skip link points at the main landmark, AND the landmark can take focus. The link and its
+#     target are `SkipLink` and `MainRegion` from @cloudsforge/ui now, which compose the href and
+#     the id from one constant — so the way to break the pair is no longer to mistype the fragment,
+#     it is to go back to a hand-written `<main>`. That is the version this repository actually
+#     shipped: the anchor was right and the target carried no tabindex, so following the link
+#     scrolled the page, left focus on the link, and sent the next Tab back into the company bar.
+#
+#     So the mutation moves the TARGET rather than the fragment: `MainRegion` accepts an `id`, and
+#     overriding it with the old `main` silently un-points the link while everything still compiles
+#     and still renders a landmark. A mutation that produced a syntax error would turn the suite
+#     red without any guard catching anything, which is the failure this whole script is about.
 mutate 'the skip link points at the main landmark' src/components/shell.tsx \
-  'href="#main"' \
-  'href="#top"'
+  '<MainRegion className="tw-main">' \
+  '<MainRegion id="main" className="tw-main">'
 
 # 44. The gate state is in the ACCESSIBLE NAME, not only in a visual badge. Colour is never the
 #     only channel, and on this world the gate decides whether you can walk in.
