@@ -50,7 +50,7 @@ Every item is required. Nothing here is optional and this repository cannot do a
 | What | Value | Why |
 | --- | --- | --- |
 | `IDENTITY_HANDOFF_ORIGINS` | add this client's origin — `http://localhost:5172` in dev, `https://tessera.<apex>` in production | Sign-in is inherited, not rebuilt: clients post to `POST /auth/handoff/redeem` and `micro-identity` refuses an origin not on that list rather than minting a code that could not be redeemed. **Without this, every Sign in button on this surface fails silently.** |
-| Compose services | `cf-tessera` 4140, `cf-web-tessera` 4141 | §10.1. The next after aetherholm-web's 4139. `cf-web-aetherholm` at `deploy/gateway/dynamic/estate-web.yml:310-315`, `:426-428` is the pattern. |
+| Compose services | `cf-tessera` 4140, `cf-web-tessera` 4141 | §10.1. The next after aetherholm-web's 4139. `cf-web-aetherholm` in `deploy/gateway/dynamic/estate-web.yml` is the pattern. |
 | Gateway route | `tessera.<apex>` → `cf-web-tessera`, and the API on the same hostname per the registry | The `tessera` surface row now exists in `ui/packages/ui/src/surfaces.ts`. |
 | **`/world-assets/`** | map the path on **this client's own origin** to wherever `micro-tessera-assets` is materialised, **`SET.json` included** | The single item most likely to be missed. The mount must be exactly what `materialise.py --into` wrote: the client reads `/world-assets/SET.json` first and resolves every sprite through it, so a mount that serves the PNGs while excluding the receipt renders as a world with no art and reports itself as unmounted. Same-origin, deliberately: a ward costs several hundred image requests and a cross-origin path puts a CORS preflight in front of every one. The art is **not** in this image — baking 392 PNGs into the bundle would mean rebuilding and re-promoting the client to change one chair. Until the mapping exists, nginx 404s and the client names each missing sprite on screen rather than substituting anything. |
 | CORS on `micro-tessera` | allow this client's origin | The client and the service are separate surfaces even in production, so every API call is cross-origin. |
@@ -105,7 +105,7 @@ have passed against that defect.
 
 **Money is `bigint`, arriving as decimal strings.** `src/lib/money.ts` refuses everything `BigInt`
 silently accepts — `''`, `' 12 '`, `'0x10'` — with a regex *before* `BigInt` is called, the way
-`market/src/money.ts:222-227` makes the hazard unreachable rather than handled.
+`market/src/money.ts` makes the hazard unreachable rather than handled.
 `parseAmountOrNull` returns `null` for absent and `0n` for a real zero, because a balance that has
 not arrived and a balance of zero look identical once both are numbers.
 

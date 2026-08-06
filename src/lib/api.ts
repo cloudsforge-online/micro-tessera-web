@@ -155,7 +155,7 @@ export interface ErrorNotice {
    *
    * ── Why this flag had to exist ────────────────────────────────────────────────────────────
    *
-   * `micro-tessera` authenticates EVERY route, including the reads: `tessera/src/server.ts:414`
+   * `micro-tessera` authenticates EVERY route, including the reads: `tessera/src/server.ts`
    * calls `authenticate(ctx, deps)` before `GET /v1/wards` returns anything. So a signed-out
    * visitor on the public World and Wards pages gets a 401 — by the service's design, not by
    * anybody's mistake.

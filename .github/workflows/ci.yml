@@ -10,7 +10,7 @@ name: CI
 # DANGLING link, so `Install` passes and `Typecheck` then cannot find one @cloudsforge/ui export.
 # Thirteen repositories each kept 200-900 lines of bespoke CI and a commented-out `uses:` saying
 # they were waiting for the design system to be published. They were waiting for one checkout.
-# That is fixed (micro-org web-ci.yml:87-121: app in `app/`, micro-ui beside it, sibling installed
+# That is fixed (micro-org web-ci.yml: app in `app/`, micro-ui beside it, sibling installed
 # FIRST), and micro-web-template calls it. This is the first frontend outside the template to.
 #
 # ── EVERY VALUE BELOW WAS READ OFF web-ci.yml's `workflow_call` BLOCK, NOT COPIED FROM PROSE ─────
@@ -62,8 +62,8 @@ jobs:
     uses: cloudsforge-online/micro-org/.github/workflows/web-ci.yml@main
     with:
       # As in the registry and in micro-deploy, which builds this image as the `tessera-web`
-      # service from `../../tessera-web` (deploy/compose/docker-compose.estate.yml:1807) and routes
-      # to `http://tessera-web:8080` (deploy/gateway/dynamic/estate-web.yml:468). The repository is
+      # service from `../../tessera-web` (deploy/compose/docker-compose.estate.yml) and routes
+      # to `http://tessera-web:8080` (deploy/gateway/dynamic/estate-web.yml). The repository is
       # micro-tessera-web; the app is tessera-web.
       app: tessera-web
 
@@ -103,9 +103,9 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────
   # THE IMAGE, PUBLISHED. `cfctl release` writes a manifest naming ghcr.io/cloudsforge-online/<repo>
-  # at this repository's package.json version (micro-org tools/cfctl.ts:889-934, image name derived
-  # at tools/registry.ts:367-369); `cfctl release --verify` runs `docker manifest inspect` on every
-  # entry (cfctl.ts:937-975); and deploy/scripts/release-deploy.sh:99-125 refuses to change anything
+  # at this repository's package.json version (micro-org tools/cfctl.ts, image name derived
+  # at tools/registry.ts); `cfctl release --verify` runs `docker manifest inspect` on every
+  # entry (cfctl.ts); and deploy/scripts/release-deploy.sh refuses to change anything
   # until all of them pull. Until this job existed CI built this image and threw it away, so that
   # gate rejected every service in the estate and the manifest path could not be used at all.
   #

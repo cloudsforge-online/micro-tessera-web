@@ -14,8 +14,8 @@ import { AUTH_EXPIRED_EVENT, clearTokens, hasSession, nimbus, signIn, signOut } 
  * What identity answers at `/auth/me`.
  *
  * The profile is **nested under `user`** — the body is `{ user, session, organisations }`
- * (`identity/src/server.ts:891-903`), and `user` is built by `toPublicUser`
- * (`identity/src/users.ts:52-63`). A flat reading — `handle` and `roles` at the top level — is a
+ * (`identity/src/server.ts`), and `user` is built by `toPublicUser`
+ * (`identity/src/users.ts`). A flat reading — `handle` and `roles` at the top level — is a
  * defect this estate has already shipped: `roles` was always `undefined`, `isAdmin` always false,
  * and the switcher was silently short for every operator. Only the nested shape is accepted;
  * tolerating the flat one as a fallback would encode a response identity does not send.
