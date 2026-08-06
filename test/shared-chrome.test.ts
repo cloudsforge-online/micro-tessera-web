@@ -121,9 +121,15 @@ describe('index.html, as a document rather than as a template', () => {
     // The domain is assembled here rather than written out, for the reason index.html gives for
     // not writing it either: a grep of the shell for it must return nothing, so the absence is
     // checkable rather than asserted.
+    //
+    // SPLIT INSIDE THE WORD, not at the dot. Splitting only the TLD off leaves the hostname's
+    // distinctive token whole, and web-ci.yml's `No third-party analytics tag` step greps the raw
+    // tree for exactly that token — so the earlier form failed the guard it was written to
+    // satisfy. No fragment below matches the guard's pattern on its own, and neither does this
+    // sentence: the rule extends to the prose, or the fix reintroduces the failure.
     // ════════════════════════════════════════════════════════════════════════════════════════
     assert.match(ANALYTICS_ID, /^G-[A-Z0-9]{4,20}$/, 'index.html declares no valid measurement ID')
-    const tagHost = ['googletagmanager', 'com'].join('.')
+    const tagHost = ['google', 'tag', 'manager', '.com'].join('')
     assert.ok(!HTML.includes(tagHost), 'index.html names the analytics tag host')
     assert.ok(!HTML.includes('gtag'), 'index.html contains a gtag snippet')
     const sources = [...HTML.matchAll(/<script[^>]*\ssrc="([^"]*)"/g)].map((m) => m[1] ?? '')
@@ -238,7 +244,10 @@ describe('the document head', () => {
 /* ── consent ────────────────────────────────────────────────────────────────────────────────── */
 
 describe('the consent banner', () => {
-  const tagHost = ['googletagmanager', 'com'].join('.')
+  // Assembled in fragments for the reason given above the first copy: the estate's analytics guard
+  // greps the raw tree, so the hostname may not be written out even in the test that proves it is
+  // never fetched.
+  const tagHost = ['google', 'tag', 'manager', '.com'].join('')
   const tags = (s: Screen): Element[] =>
     [...s.document.head.querySelectorAll('script[src]')].filter((el) =>
       (el.getAttribute('src') ?? '').includes(tagHost),
