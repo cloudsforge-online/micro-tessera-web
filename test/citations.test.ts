@@ -187,3 +187,52 @@ function walk(dir: string): string[] {
   }
   return out
 }
+
+/**
+ * NO CITATION IN THIS REPOSITORY MAY CARRY A LINE NUMBER.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * The route anchors above are already the right shape — `cite()` finds a line by SEARCHING for
+ * text that must match exactly once, so micro-tessera can move a route without breaking anything
+ * here. The prose was not. Twenty-five sentences in this bundle named a position in a file another
+ * repository owns and is free to edit: `tessera/src/server.ts` at a line, `identity/src/users.ts`
+ * at a line, `lantern/src/rum.ts` at a line.
+ *
+ * That is a promise this repository cannot keep. When micro-identity gained email verification and
+ * password reset, `/auth/me` moved and every citation to it across the estate went stale at once,
+ * while nothing in any client was wrong. Nothing runs a frontend's suite when a service changes,
+ * so it surfaces during a release rather than at the edit — seven of nineteen CI failures in one
+ * day were this single shape.
+ *
+ * So the rule is enforced rather than described. Cite the FILE; if a reader needs the exact place,
+ * name the SYMBOL — `authenticate(ctx, deps)`, `parseAmount`, `RUM_KINDS` — which moves with the
+ * code instead of going stale under it.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+test('no citation in this repository names a line number', () => {
+  const roots = ['src', 'test', '.github']
+  const files: string[] = []
+  const collect = (dir: string): void => {
+    for (const entry of readdirSync(dir)) {
+      if (entry === 'node_modules' || entry === 'dist' || entry === '.git') continue
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) collect(full)
+      else if (/\.(tsx?|css|ya?ml|md|html|sh)$/.test(entry)) files.push(full)
+    }
+  }
+  for (const root of roots) collect(join(REPO, root))
+  for (const loose of ['README.md', 'index.html', 'nginx.conf', 'vite.config.ts']) {
+    if (existsSync(join(REPO, loose))) files.push(join(REPO, loose))
+  }
+  // Guards the sweep itself: a walker that silently found nothing would read as a guarantee.
+  assert.ok(files.length > 30, `only ${files.length} files were swept — the walker is broken`)
+
+  const cited = new RegExp(
+    // a repository-relative path, then a colon and a line (or a range) stuck to it
+    String.raw`\b(?:[a-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.(?:ts|tsx|css|ya?ml|md|sh|py|sol)` + ':\\d',
+  )
+  const offenders = files
+    .filter((f) => cited.test(readFileSync(f, 'utf8')))
+    .map((f) => `${f.slice(REPO.length + 1)} cites a line — cite the file, or name the symbol`)
+  assert.deepEqual(offenders, [])
+})

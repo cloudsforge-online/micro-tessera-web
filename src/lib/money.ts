@@ -9,7 +9,7 @@
  * something — which is worse than an error, because an error is visible.
  *
  * `micro-market` makes the hazard UNREACHABLE rather than handled: `parseAmount` requires
- * `/^\d{1,78}$/` BEFORE calling `BigInt` (`market/src/money.ts:222-227`), and `micro-tessera`'s
+ * `/^\d{1,78}$/` BEFORE calling `BigInt` (`market/src/money.ts`), and `micro-tessera`'s
  * `parsePriceWei` does the same on its side of the wire. This file is the third copy of that one
  * idea, on the browser's side, and it is a copy rather than an import because
  * `@cloudsforge/contracts-money` is not a dependency any frontend in this estate carries.
@@ -33,7 +33,7 @@
 /** Wei in one Spark. §8.1: "exactly 10¹² wei". */
 export const WEI_PER_SPARK = 1_000_000_000_000n
 
-/** Wei in one EMBER. 18 decimals (`contracts/packages/chain/src/index.ts:53`). */
+/** Wei in one EMBER. 18 decimals (`contracts/packages/chain/src/index.ts`). */
 export const WEI_PER_EMBER = 1_000_000_000_000_000_000n
 
 export class AmountError extends RangeError {
@@ -77,7 +77,7 @@ function describe(value: unknown): string {
  * exactly one of those is accepted.
  *
  * 78 digits because ledger amounts are `numeric(78,0)`, "chosen precisely because 78 digits holds
- * any uint256" (`ledger/src/migrations.ts:215`).
+ * any uint256" (`ledger/src/migrations.ts`).
  */
 export function parseAmount(value: unknown, what: string): bigint {
   if (typeof value !== 'string' || !/^\d{1,78}$/.test(value)) throw new AmountError(what, value)

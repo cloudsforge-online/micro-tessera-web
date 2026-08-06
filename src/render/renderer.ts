@@ -298,7 +298,7 @@ export class WorldRenderer {
 
     ctx.save()
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    // `#12100f` is the estate's pinned ground (`brand/normalise_ground.py:27`,
+    // `#12100f` is the estate's pinned ground (`brand/normalise_ground.py`,
     // `TARGET = (0x12,0x10,0x0F)`) and every sprite was generated standing on it. Clearing to the
     // same value means the seam between a cut-out sprite's fringe and the page behind it is the
     // colour the fringe already is.

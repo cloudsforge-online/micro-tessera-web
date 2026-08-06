@@ -85,7 +85,7 @@ const NO_SPRITES: Routes = { 'GET /world-assets/': { status: 404 } }
  * The real materialised set, served the way an nginx mount serves it.
  *
  * The receipt at `SET.json`, a 200 for exactly the paths it names, and a 404 for everything else
- * — which is `tessera-web/nginx.conf:73`, `try_files $uri =404` with no fallback. Both sides come
+ * — which is `tessera-web/nginx.conf`, `try_files $uri =404` with no fallback. Both sides come
  * from `micro-tessera-assets`' own files, so nothing here is a third spelling of the convention.
  */
 function mountedSet(): Routes {

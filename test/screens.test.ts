@@ -487,7 +487,7 @@ test('BJ-TES-28 [T1/presentation] a real zero balance reads as zero, and an abse
  * — 196 characters of red alert, on the public front door of the product, offering a retry button
  * that could never succeed and a support reference for a thing that had not gone wrong.
  *
- * IT IS NOT AN AUTH BUG. `tessera/src/server.ts:414` calls `authenticate(ctx, deps)` before
+ * IT IS NOT AN AUTH BUG. `tessera/src/server.ts` calls `authenticate(ctx, deps)` before
  * `GET /v1/wards` returns anything, so 401 is the service answering correctly. And this app's own
  * `src/lib/routes.ts` had already written down what should happen — "what a signed-out visitor
  * actually gets is the screen and an invitation — not the world" — while three pages rendered

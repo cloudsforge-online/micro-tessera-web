@@ -108,7 +108,7 @@ export function Failed({
  *
  * ── Why this is a state and not a `<Failed>` with kinder words ────────────────────────────────
  *
- * `micro-tessera` authenticates every route including the reads (`tessera/src/server.ts:414`),
+ * `micro-tessera` authenticates every route including the reads (`tessera/src/server.ts`),
  * and `src/lib/routes.ts` already records the consequence and calls it the service's gap to
  * close: "what a signed-out visitor actually gets is the screen and an invitation — not the
  * world." The invitation is this component. Until this existed the intent was written down in

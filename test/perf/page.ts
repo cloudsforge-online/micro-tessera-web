@@ -41,7 +41,7 @@ if (!ctx) throw new Error('no 2d context')
  * below; `loadMs` reports it separately so the two are never conflated.
  *
  * The threshold is generous (a Manhattan distance of 24 from the target) because the ground is
- * normalised to `#12100f` numerically rather than exactly — `brand/normalise_ground.py:27` states
+ * normalised to `#12100f` numerically rather than exactly — `brand/normalise_ground.py` states
  * the target and the reason: FLUX will not hit an exact hex.
  */
 function keyToAlpha(source: ImageBitmap, tint: number): ImageBitmap | Promise<ImageBitmap> {
