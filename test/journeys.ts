@@ -586,7 +586,7 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     id: 'BJ-ADV-TES-02-H1',
-    what: 'double-pressing List it produces exactly one listing',
+    what: 'double-pressing Put it up produces exactly one listing',
     screen: 'workshop',
     asserts: 'client-request',
     tier: 'T1',

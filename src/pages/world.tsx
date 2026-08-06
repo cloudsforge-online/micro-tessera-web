@@ -94,8 +94,16 @@ function Arrivals({
       <header className="tw-page-head">
         <h1>Arrive</h1>
         <p className="tw-page-head__meta">
-          A place with an open gate is a place you can walk into. Nothing downloads and nothing
-          installs — you are already here.
+          Any place with its gate open is a place you can walk straight into. There is no download
+          and no installer, because you are standing in it. Tessera is one of the titles inside
+          Forge Worlds, so the account you signed in with is the same account that plays Emberkin
+          and Aetherholm, and what you own travels between all three.
+        </p>
+        <p className="tw-page-head__meta">
+          Everything here is made by the people in it. You take ground for nothing, describe a
+          thing until the Kiln fires it, put it down where visitors will find it, and sell it if
+          somebody wants it. Payment is EMBER, which you can withdraw to a wallet you control — or
+          mine yourself, in a browser tab, on a key that never leaves your machine.
         </p>
       </header>
 
@@ -113,7 +121,7 @@ function Arrivals({
       {parcels.notice && <Failed notice={parcels.notice} onRetry={parcels.reload} />}
       {!parcels.notice && parcels.data === undefined && <Loading label="Looking around" />}
       {parcels.data?.parcels.length === 0 && (
-        <Empty title="Nothing has been claimed in this ward yet" hint="All of it is free." />
+        <Empty title="Nobody has taken anything in this ward" hint="Every tile of it is yours for the asking." />
       )}
       {parcels.data && parcels.data.parcels.length > 0 && (
         <ul className="tw-places">
@@ -239,8 +247,9 @@ function Place({
           A {parcel.tier} at {parcel.originX}, {parcel.originY}
         </h1>
         <p className="tw-page-head__meta">
-          {placements.length.toLocaleString()} objects placed, of {parcel.objectCap.toLocaleString()}{' '}
-          this parcel can hold. The cap is a rendering budget and is not purchasable at any price.
+          {placements.length.toLocaleString()} things standing here, out of the{' '}
+          {parcel.objectCap.toLocaleString()} this parcel takes. That ceiling exists so the scene
+          draws smoothly on an ordinary machine, and no amount of money raises it.
         </p>
         <button type="button" className="tw-button tw-button--quiet" onClick={onLeave}>
           Leave this place
@@ -259,9 +268,9 @@ function Place({
       />
 
       <p className="tw-footnote">
-        The ground under this parcel is drawn from the ward&apos;s archetype by this client, because
-        micro-tessera serves no terrain. It is a picture, not world state — nothing here is sent
-        anywhere, and it is replaced the day the service serves ground.
+        The floor you are looking at is invented here in your browser from the ward&apos;s character,
+        since the service keeps no terrain of its own. Treat it as scenery rather than something
+        anybody owns. Nothing about it is recorded, and it gives way the day real ground arrives.
       </p>
     </div>
   )

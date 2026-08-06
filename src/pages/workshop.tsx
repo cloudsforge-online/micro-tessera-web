@@ -51,20 +51,21 @@ export function WorkshopPage() {
       <header className="tw-page-head">
         <h1>Your Workshop</h1>
         <p className="tw-page-head__meta">
-          A creator paid in Sparks is paid EMBER somebody else deposited. You can withdraw it to
-          your own wallet the same afternoon.
+          Sell what you have made and you are paid in Sparks — real EMBER, put there by the
+          person who bought it. It is money, not points: take it out to a wallet you control the
+          same afternoon, spend it anywhere in the ecosystem, or mine more of it in a browser tab.
         </p>
       </header>
 
       <section aria-labelledby="terms-heading" className="tw-terms">
-        <h2 id="terms-heading">What the platform takes</h2>
+        <h2 id="terms-heading">Our cut, in full</h2>
         {terms.notice && <Failed notice={terms.notice} onRetry={terms.reload} />}
         {!terms.notice && terms.data === undefined && <Loading label="Reading the terms" />}
         {terms.data && (
           <dl className="tw-terms__list">
             <div>
               <dt>Platform fee</dt>
-              <dd>{formatBps(terms.data.platformFeeBps)} of every sale</dd>
+              <dd>{formatBps(terms.data.platformFeeBps)} of what a buyer pays</dd>
             </div>
             <div>
               <dt>Royalty cap</dt>
@@ -79,8 +80,8 @@ export function WorkshopPage() {
               */}
               <dd>
                 {terms.data.identicalForEveryAccount
-                  ? 'Every account, identically. No SKU, tier or subscription reduces either.'
-                  : 'The service is no longer stating that these rates are the same for everybody.'}
+                  ? 'Everybody, at exactly these numbers. There is no plan, tier or subscription that gets you a better deal.'
+                  : 'The service has stopped saying these rates apply to everybody equally.'}
               </dd>
             </div>
           </dl>
@@ -94,11 +95,11 @@ export function WorkshopPage() {
       />
 
       <section aria-labelledby="listings-heading">
-        <h2 id="listings-heading">What you have listed</h2>
+        <h2 id="listings-heading">On sale from you</h2>
         {listings.notice && <Failed notice={listings.notice} onRetry={listings.reload} />}
         {!listings.notice && listings.data === undefined && <Loading label="Reading your listings" />}
         {listings.data?.listings.length === 0 && (
-          <Empty title="You have listed nothing" hint="An object has to be fired before it can be sold." />
+          <Empty title="You are not selling anything" hint="Make it in the Kiln first — you can only sell a thing that exists." />
         )}
         {listings.data && listings.data.listings.length > 0 && (
           <ListingTable listings={listings.data.listings} />
@@ -177,12 +178,12 @@ function ListingForm({
 
   return (
     <form className="tw-form" onSubmit={submit} aria-labelledby="list-heading">
-      <h2 id="list-heading">List something for sale</h2>
+      <h2 id="list-heading">Put something up for sale</h2>
 
       <label className="tw-field">
         <span className="tw-field__label">Object</span>
         <select value={objectId} onChange={(e) => setObjectId(e.target.value)} required>
-          <option value="">Choose one of yours</option>
+          <option value="">Pick one of yours</option>
           {sellable.map((object) => (
             <option key={object.id} value={object.id}>
               {object.prompt.slice(0, 60)}
@@ -207,7 +208,7 @@ function ListingForm({
             required
           />
           <span id="price-help" className="tw-field__help">
-            A Spark is one micro-EMBER. A common object is about 400.
+            A Spark is a millionth of an EMBER. Ordinary things go for around 400 of them.
           </span>
         </label>
 
@@ -231,21 +232,21 @@ function ListingForm({
               had stopped enforcing it.
             */}
             {maxRoyaltyBps === undefined
-              ? 'Paid on every resale, forever.'
-              : `Paid on every resale, forever. The cap is ${formatBps(maxRoyaltyBps)}.`}
+              ? 'You are paid this every time it changes hands again, for as long as it exists.'
+              : `You are paid this every time it changes hands again, for as long as it exists. The most you may ask is ${formatBps(maxRoyaltyBps)}.`}
           </span>
         </label>
       </div>
 
       <p className="tw-form__note">
-        Every listing here settles custodially, without exception. The royalty is enforced only on
-        that path — an on-chain listing records a royalty on the order row and never posts it — so
-        custodial is the only mode in which the royalty exists at all. There is no control on this
-        form that could choose the other one.
+        Sales here settle through us, every one of them, and that is deliberate. Your resale
+        royalty is only actually paid on this route: an on-chain listing writes the number down and
+        never sends the money. Since the royalty is the point, this form gives you no switch to
+        choose the other way.
       </p>
 
       <button type="submit" className="tw-button" disabled={busy}>
-        {busy ? 'Listing…' : 'List it'}
+        {busy ? 'Putting it up…' : 'Put it up'}
       </button>
 
       {malformed && (
@@ -268,7 +269,7 @@ function ListingTable({ listings }: { listings: readonly Listing[] }) {
     <div className="tw-scroll">
       <table className="tw-table">
         <caption className="tw-visually-hidden">
-          Your listings, with the fee, royalty and proceeds each price splits into
+          What you are selling, and how each price divides into our fee, your royalty and your money
         </caption>
         <thead>
           <tr>
@@ -276,7 +277,7 @@ function ListingTable({ listings }: { listings: readonly Listing[] }) {
             <th scope="col">Price</th>
             <th scope="col">Platform fee</th>
             <th scope="col">Royalty</th>
-            <th scope="col">You receive</th>
+            <th scope="col">You keep</th>
             <th scope="col">Settles</th>
             <th scope="col">State</th>
           </tr>

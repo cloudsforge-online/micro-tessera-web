@@ -35,18 +35,18 @@ import { useAsync } from '../lib/useAsync.ts'
 import { Empty, Failed, Loading } from '../components/states.tsx'
 
 const TIERS: readonly { tier: Tier; label: string; note: string }[] = [
-  { tier: 'homestead', label: 'Homestead — 16×16', note: 'One per account, free, never fallow, never tradeable.' },
-  { tier: 'plot', label: 'Plot — 32×32', note: 'Free to claim. Held by liveliness, not by rent.' },
-  { tier: 'court', label: 'Court — 64×64', note: 'Free to claim. Counts against your Deed Slots.' },
-  { tier: 'quarter', label: 'Quarter — 128×128', note: 'Free to claim. Counts against your Deed Slots.' },
+  { tier: 'homestead', label: 'Homestead — 16×16', note: 'Yours for good. One each, costs nothing, and nobody can take or trade it.' },
+  { tier: 'plot', label: 'Plot — 32×32', note: 'Costs nothing. You keep it by keeping it alive, not by paying rent.' },
+  { tier: 'court', label: 'Court — 64×64', note: 'Costs nothing. Uses one of your Deed Slots.' },
+  { tier: 'quarter', label: 'Quarter — 128×128', note: 'Costs nothing. Uses one of your Deed Slots.' },
 ]
 
 /** What the fallow clock means, in words, for each state the service can return. */
 const FALLOW_COPY: Record<string, string> = {
-  live: 'Live.',
-  banked: 'Banked — the clock is extended to 270 days.',
-  fallow: 'Fallow — no visitor and no edit for 90 days. Contestable after a further 30.',
-  contestable: 'Contestable — anyone may claim this now.',
+  live: 'In use.',
+  banked: 'Banked — you have 270 days on the clock instead of 90.',
+  fallow: 'Fallow — nobody has visited or changed anything for 90 days. Another 30 and it is up for grabs.',
+  contestable: 'Up for grabs — anybody can take this one now.',
 }
 
 export function LandPage() {
@@ -58,8 +58,9 @@ export function LandPage() {
       <header className="tw-page-head">
         <h1>Your land</h1>
         <p className="tw-page-head__meta">
-          Ground is claimed, never bought — the platform sells no land at any tier. What holds a
-          parcel is that people come to it.
+          You take ground rather than buy it. We do not sell a single tile, at any size, to anyone.
+          A parcel stays yours for as long as people keep coming to it, which means the way to hold
+          somewhere good is to make it worth the walk.
         </p>
       </header>
 
@@ -73,8 +74,8 @@ export function LandPage() {
       {!parcels.notice && parcels.data === undefined && <Loading label="Reading your deeds" />}
       {parcels.data?.parcels.length === 0 && (
         <Empty
-          title="You hold no ground yet"
-          hint="A Homestead is free, one per account, and nobody can ever take it. Claim one above."
+          title="You have not taken any ground"
+          hint="Start with a Homestead: one each, no cost, and nobody can ever take it off you. The form above does it."
         />
       )}
       {parcels.data && parcels.data.parcels.length > 0 && (
@@ -139,11 +140,11 @@ function ClaimForm({
 
   return (
     <form className="tw-form" onSubmit={submit} aria-labelledby="claim-heading">
-      <h2 id="claim-heading">Claim free ground</h2>
+      <h2 id="claim-heading">Take some ground</h2>
 
       {wardsFailed && (
         <p className="tw-form__error" role="alert">
-          The wards could not be read, so there is nothing to claim in. {wardsFailed.message}
+          We could not read the wards, so there is nowhere to put a deed. {wardsFailed.message}
         </p>
       )}
 
@@ -203,13 +204,13 @@ function ClaimForm({
       </div>
 
       <p className="tw-form__note">
-        There is no price on this form and no payment step, because there is no price. The platform
-        takes its ordinary fee when a parcel is traded between players and never mints supply for
-        money.
+        You will not find a price here, or a payment step, because ground does not cost anything.
+        We earn our fee when one player sells a parcel to another. We never conjure up land to sell
+        you.
       </p>
 
       <button type="submit" className="tw-button" disabled={busy}>
-        {busy ? 'Claiming…' : 'Claim this ground'}
+        {busy ? 'Taking it…' : 'This ground is mine'}
       </button>
 
       {notice && (
@@ -220,8 +221,8 @@ function ClaimForm({
       )}
       {claimed && (
         <p className="tw-form__ok" role="status">
-          Claimed. A {claimed.tier} of {claimed.tiles.toLocaleString()} tiles, holding up to{' '}
-          {claimed.objectCap.toLocaleString()} objects.
+          Done. A {claimed.tier} of {claimed.tiles.toLocaleString()} tiles, with room for{' '}
+          {claimed.objectCap.toLocaleString()} things on it.
         </p>
       )}
     </form>
@@ -232,7 +233,7 @@ function ParcelList({ parcels, onChanged }: { parcels: readonly Parcel[]; onChan
   return (
     <div className="tw-scroll">
       <table className="tw-table">
-        <caption className="tw-visually-hidden">Your parcels and the fallow clock on each</caption>
+        <caption className="tw-visually-hidden">Everything you hold, and how long each has left</caption>
         <thead>
           <tr>
             <th scope="col">Tier</th>

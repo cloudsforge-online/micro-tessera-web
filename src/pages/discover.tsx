@@ -50,19 +50,20 @@ export function DiscoverPage() {
   return (
     <div className="tw-discover">
       <header className="tw-page-head">
-        <h1>Where people are going</h1>
+        <h1>Where the crowds are</h1>
         <p className="tw-page-head__meta">
-          Ordered by footfall, dwell and recency, and by nothing else. Both inputs are in the table
-          so you can see the order follows from them — no placement here has ever been bought, and
-          none can be.
+          This list is built from how many people walked in, how long they stayed, and how lately.
+          Nothing else touches it. Both numbers sit in the table beside each place, so you can check
+          the order against them yourself. Nobody has ever paid to appear higher, and there is no
+          mechanism by which they could.
         </p>
       </header>
 
       {signedOut && (
         <SignedOut
           onSignIn={() => signIn()}
-          title="Sign in to see where people are going"
-          hint="The feed is ranked by footfall and dwell and by nothing else — but Tessera asks who you are before it reads it. Nothing here is broken."
+          title="Sign in and the crowds appear"
+          hint="Visits and time spent are the whole of the ranking, but Tessera wants to know who is asking before it will read the list out. One sign-in and it is yours."
         />
       )}
 
@@ -86,8 +87,8 @@ export function DiscoverPage() {
       )}
       {feed.data?.parcels.length === 0 && (
         <Empty
-          title="Nobody has been anywhere yet"
-          hint="Footfall is counted when somebody walks into a parcel with its gate open."
+          title="Nobody has been anywhere"
+          hint="A visit counts the moment somebody walks through an open gate. Open yours and see who turns up."
         />
       )}
 
@@ -95,7 +96,7 @@ export function DiscoverPage() {
         <div className="tw-scroll">
           <table className="tw-table">
             <caption className="tw-visually-hidden">
-              Parcels ranked by footfall and dwell, with both inputs shown
+              Places in order of visits and time spent, with both figures shown
             </caption>
             <thead>
               <tr>
@@ -126,9 +127,9 @@ export function DiscoverPage() {
       )}
 
       <p className="tw-footnote">
-        Beacons light a Venue for an event. They are free, limited to three per parcel per seven
-        days, and the limit cannot be raised by paying — a Beacon that could be bought would stop
-        meaning anything.
+        A Beacon puts a Venue in front of people when you have something on. It costs nothing, you
+        get three per parcel a week, and money will not buy you a fourth. The moment a Beacon can
+        be bought it stops telling anyone anything.
       </p>
     </div>
   )

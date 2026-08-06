@@ -12,8 +12,8 @@ export function NotFoundPage() {
       <span className="tw-state__icon" aria-hidden="true">
         ◇
       </span>
-      <p className="tw-state__title">There is nothing at this address</p>
-      <p className="tw-state__hint">These places exist:</p>
+      <p className="tw-state__title">Nothing stands at this address</p>
+      <p className="tw-state__hint">Try one of these instead:</p>
       <ul className="tw-notfound">
         {ROUTES.map((route) => (
           <li key={route.path}>

@@ -61,19 +61,21 @@ export function KilnPage() {
       <header className="tw-page-head">
         <h1>The Kiln</h1>
         <p className="tw-page-head__meta">
-          Describe it, pick a footprint, wait about a minute. What comes out is addressed by the
-          sha256 of its own bytes, so authorship is not a claim anybody files.
+          Write down what you want, choose how much floor it takes up, and give it a minute. The
+          thing that comes back is named after a fingerprint of its own contents, so two people
+          cannot argue about who made what. Whatever you fire is yours to stand up on your land,
+          sell in the Workshop, or carry to any other Forge Worlds title on the same account.
         </p>
       </header>
 
       <FiringForm onFired={mine.reload} />
 
       <section aria-labelledby="mine-heading">
-        <h2 id="mine-heading">What you have fired</h2>
+        <h2 id="mine-heading">Things you have made</h2>
         {mine.notice && <Failed notice={mine.notice} onRetry={mine.reload} />}
         {!mine.notice && mine.data === undefined && <Loading label="Opening the cooling rack" />}
         {mine.data?.objects.length === 0 && (
-          <Empty title="You have fired nothing yet" hint="A daily allowance of firings is free." />
+          <Empty title="Nothing on your rack" hint="You get a handful of firings every day at no cost. Use one above." />
         )}
         {mine.data && mine.data.objects.length > 0 && <ObjectTable objects={mine.data.objects} />}
       </section>
@@ -140,10 +142,10 @@ function FiringForm({ onFired }: { onFired: () => void }) {
 
   return (
     <form className="tw-form" onSubmit={submit} aria-labelledby="fire-heading">
-      <h2 id="fire-heading">Fire an object</h2>
+      <h2 id="fire-heading">Make something</h2>
 
       <label className="tw-field">
-        <span className="tw-field__label">What is it?</span>
+        <span className="tw-field__label">Describe it</span>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -193,9 +195,9 @@ function FiringForm({ onFired }: { onFired: () => void }) {
 
       {cold && (
         <p className="tw-form__note" role="status">
-          The Kiln has no upstream configured here, so nothing can be fired in this environment.
-          That is a supported state rather than an outage — the rest of the world still works, and
-          retrying will not change it.
+          Nothing is wired up behind the Kiln on this deployment, so it cannot make you anything
+          here. That is how this environment is meant to run, not a fault. Every other part of the
+          world works; pressing the button again will not help.
         </p>
       )}
       {notice && (
@@ -256,12 +258,12 @@ function FiringWatch({ objectId }: { objectId: string }) {
   if (!object) return <Loading label="Asking the Kiln" />
   return (
     <p className="tw-form__ok" role="status">
-      {object.status === 'firing' && !gaveUp && 'In the Kiln. This takes about a minute.'}
+      {object.status === 'firing' && !gaveUp && 'It is in the Kiln. Give it about a minute.'}
       {object.status === 'firing' && gaveUp &&
-        'Still firing after three minutes. It may still finish — it is on your rack below.'}
+        'Three minutes and it is still going. It may well finish — look for it on your rack below.'}
       {object.status === 'fired' &&
-        `Fired. Its identity is ${object.checksum ?? 'not yet recorded'} — the sha256 of its own bytes.`}
-      {object.status === 'failed' && 'The firing failed. Nothing was charged for a firing that produced nothing.'}
+        `Out of the Kiln. It answers to ${object.checksum ?? 'a name not yet recorded'}, a fingerprint taken from the thing itself.`}
+      {object.status === 'failed' && 'That one did not come out. You were not charged for a firing that gave you nothing.'}
     </p>
   )
 }
@@ -270,10 +272,10 @@ function ObjectTable({ objects }: { objects: readonly WorldObject[] }) {
   return (
     <div className="tw-scroll">
       <table className="tw-table">
-        <caption className="tw-visually-hidden">Objects you have fired</caption>
+        <caption className="tw-visually-hidden">Everything you have taken out of the Kiln</caption>
         <thead>
           <tr>
-            <th scope="col">What you asked for</th>
+            <th scope="col">What you wanted</th>
             <th scope="col">Category</th>
             <th scope="col">Footprint</th>
             <th scope="col">State</th>
@@ -298,7 +300,7 @@ function ObjectTable({ objects }: { objects: readonly WorldObject[] }) {
                 */}
                 {object.anchoredAt
                   ? `Block ${object.anchorBlock ?? '?'}`
-                  : 'Not yet — anchored when first listed'}
+                  : 'No — that happens the first time you list it'}
               </td>
             </tr>
           ))}
@@ -316,14 +318,14 @@ function SeedObjectsGap() {
     <section aria-labelledby="seed-heading" className="tw-gap">
       <h2 id="seed-heading">The 96 seed objects</h2>
       <p>
-        Twelve categories of eight, free to every account forever, never sold and never removed.
-        They are the counterweight that makes paying for Kiln capacity honest: nobody is ever
-        unable to build.
+        Eight objects in each of twelve categories, given to every account and never taken back.
+        We do not sell them and we cannot withdraw them. They exist so that paying for extra Kiln
+        capacity is a convenience rather than the price of being able to build at all.
       </p>
       <p role="status">
-        They are not shown here, because micro-tessera serves no route that lists them —{' '}
-        <code>GET /v1/objects</code> returns only objects you fired yourself. Nothing has been
-        substituted for them.
+        You will not see them on this screen: the service has no way to list them, and{' '}
+        <code>GET /v1/objects</code> hands back only what you made yourself. We would rather show
+        you a gap than fill it with something that is not them.
       </p>
     </section>
   )

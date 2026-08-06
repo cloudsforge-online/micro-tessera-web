@@ -72,7 +72,7 @@ export function WalletStrip({ balances }: { balances?: Balances | undefined }) {
   const read = useAsync(
     myBalances,
     [],
-    'Your balances are unavailable — this is not a balance of zero.',
+    'We cannot read your balances right now. Take that as unknown, not as nothing.',
   )
   const live: Balances | undefined =
     balances ??
@@ -94,10 +94,10 @@ export function WalletStrip({ balances }: { balances?: Balances | undefined }) {
 
   return (
     <section className="tw-wallet" aria-label="Your EMBER">
-      <Figure name="Available" meaning="Spendable now." wei={live?.availableWei ?? null} />
+      <Figure name="Available" meaning="Yours to spend right now." wei={live?.availableWei ?? null} />
       <Figure
         name="Clearing"
-        meaning="Yours, releasing when the dispute window closes."
+        meaning="Yours, and it frees up once the dispute window shuts."
         wei={live?.clearingWei ?? null}
       />
       <div className="tw-wallet__figure">
@@ -112,7 +112,7 @@ export function WalletStrip({ balances }: { balances?: Balances | undefined }) {
           and no total". A user who cannot see that rule being followed has to trust it; a user who
           can read it can check it.
         */}
-        <dd className="tw-wallet__note">On chain, not yours yet — and in no total above.</dd>
+        <dd className="tw-wallet__note">On its way in. Not yours yet, and counted in neither figure above.</dd>
       </div>
 
       {unavailable && (
@@ -125,9 +125,9 @@ export function WalletStrip({ balances }: { balances?: Balances | undefined }) {
             The sentence says WHICH figures and WHY there is no number, because "—" reads as "you
             have none" to everybody who does not know the route answered 503.
           */}
-          These figures are not being shown: <code>{BALANCES_ROUTE}</code> did not answer with any.
-          Nothing here is a zero — a zero would be a claim about your money that this client cannot
-          make, and the service refuses to make it either.
+          We have no figures to show you: <code>{BALANCES_ROUTE}</code> came back without any. You
+          will not see a zero here, because a zero would be a statement about your money that
+          neither this page nor the service behind it is in a position to make.
           {read.notice ? ` ${read.notice.message}` : ''}
         </p>
       )}
