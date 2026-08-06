@@ -60,8 +60,12 @@ body {
   color: var(--cf-fg);
 }
 
+/* `color` takes the TEXT step and `border-bottom-color` does not. `--cf-accent` is validated at
+   3:1, which is the floor for a border, a fill or an outline; `--cf-accent-text` is the 4.5:1 step
+   and is the only one that may be set as `color:`. They are the same value on a light scheme and
+   different on a dark one, which is the scheme this surface has always shipped. */
 .tw-nav__link.is-active {
-  color: var(--cf-accent);
+  color: var(--cf-accent-text);
   border-bottom-color: var(--cf-accent);
 }
 
@@ -75,7 +79,7 @@ body {
   border: 1px solid var(--cf-line-strong);
   border-radius: var(--cf-radius);
   background: var(--cf-surface);
-  color: var(--cf-warn);
+  color: var(--cf-warn-text);
 }
 
 .tw-degraded p {
@@ -111,11 +115,11 @@ body {
 }
 
 .tw-warn {
-  color: var(--cf-warn);
+  color: var(--cf-warn-text);
 }
 
 .tw-link {
-  color: var(--cf-accent);
+  color: var(--cf-accent-text);
 }
 
 .tw-band {
@@ -224,7 +228,7 @@ body {
 }
 
 .tw-state--forbidden .tw-state__icon {
-  color: var(--cf-warn);
+  color: var(--cf-warn-text);
 }
 
 /* An invitation, so it wears the surface's ACCENT rather than a status hue. Nothing is wrong:
@@ -232,7 +236,7 @@ body {
    which is exactly the confusion the signed-out state was added to end. The accent is the
    product's own, from `[data-cf-product]` in the design system, so it follows the substrate. */
 .tw-state--signedout .tw-state__icon {
-  color: var(--cf-accent);
+  color: var(--cf-accent-text);
 }
 
 .tw-state__title {
@@ -473,45 +477,20 @@ body {
 }
 
 /* -----------------------------------------------------------------------
- * The skip link. Hidden until focused, and then unmistakably visible.
+ * `.tw-skip` WAS HERE, WITH ITS OWN REDUCED-MOTION RULE. Both are gone with
+ * the markup they styled: the skip link is `SkipLink` from @cloudsforge/ui
+ * now, which brings `.cf-skip` and — the part that matters — points at a
+ * `<main>` carrying `tabIndex={-1}`, which the local pair never did. A rule
+ * left behind after its element is deleted is dead weight the next reader
+ * has to prove is dead.
  *
- * `top` moves rather than `display` toggling, because a link that is
- * `display: none` is not focusable at all and a skip link that cannot be
- * reached by Tab is decoration. The focused position clears the shared bar
- * by its own height token, so it does not land underneath it.
+ * The two properties this one had that the shared rule must keep are worth
+ * recording rather than losing: it moved `top` rather than toggling
+ * `display`, because a `display: none` link is not focusable at all and a
+ * skip link that cannot be reached by Tab is decoration; and it did not
+ * slide for a reader who asked for less motion (BJ-A11Y-11). `.cf-skip` in
+ * `ui/packages/ui/src/ui.css` does both, and does them for every surface.
  * ------------------------------------------------------------------- */
-.tw-skip {
-  position: absolute;
-  left: var(--cf-space-sm);
-  top: -4rem;
-  z-index: 100;
-  padding: var(--cf-space-sm) var(--cf-space-xl);
-  border-radius: var(--cf-radius);
-  background: var(--cf-accent);
-  color: var(--cf-accent-ink);
-  font-weight: 600;
-  text-decoration: none;
-  transition: top var(--cf-speed) var(--cf-ease);
-}
-
-.tw-skip:focus {
-  top: calc(var(--cf-bar-h) + var(--cf-space-sm));
-}
-
-/*
- * The skip link does not slide for a reader who asked for less motion.
- *
- * `prefers-reduced-motion: reduce` is an accessibility setting rather than a taste — for some
- * readers motion causes nausea or triggers a vestibular episode — and this file already honours it
- * elsewhere. The skip link was the last thing on the surface still moving, which is only
- * discoverable by setting the preference and reading COMPUTED durations: the rule is right there
- * in the stylesheet and says nothing about who it applies to. Found by BJ-A11Y-11.
- */
-@media (prefers-reduced-motion: reduce) {
-  .tw-skip {
-    transition: none;
-  }
-}
 
 /* ── Tessera's own screens ───────────────────────────────────────────────────────────────────
    Everything above is the template's. Everything below belongs to this client.
@@ -526,7 +505,7 @@ body {
   gap: 1.5rem;
   align-items: flex-start;
   padding: 0.75rem 1.25rem;
-  border-block-end: 1px solid var(--cf-border, rgba(255, 255, 255, 0.08));
+  border-block-end: 1px solid var(--cf-line);
 }
 .tw-wallet__figure { min-width: 10rem; }
 .tw-wallet__name { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
@@ -547,7 +526,7 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
 .tw-place { inline-size: 100%; text-align: start; display: flex; flex-wrap: wrap; gap: 0.5rem;
   align-items: baseline; padding: 0.75rem 1rem; background: none; cursor: pointer;
-  border: 1px solid var(--cf-border, rgba(255, 255, 255, 0.12)); border-radius: 6px; color: inherit; }
+  border: 1px solid var(--cf-line-strong); border-radius: 6px; color: inherit; }
 .tw-place__tier { font-weight: 600; text-transform: capitalize; }
 .tw-place__where { font-variant-numeric: tabular-nums; opacity: 0.7; }
 .tw-place__gate { margin-inline-start: auto; font-size: 0.8rem; opacity: 0.8; }
@@ -555,7 +534,7 @@ body {
 .tw-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
   padding: 0.1rem 0.4rem; border-radius: 3px; border: 1px solid currentColor; opacity: 0.8; }
 .tw-muted { opacity: 0.65; font-size: 0.85em; }
-.tw-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+.tw-mono { font-family: var(--cf-font-mono); font-size: 0.85em; }
 .tw-footnote { font-size: 0.8rem; opacity: 0.7; margin-block-start: 1rem; }
 .tw-gap { margin-block-start: 2rem; }
 .tw-terms__list { display: flex; flex-wrap: wrap; gap: 2rem; margin: 0.5rem 0 1.5rem; }
@@ -575,9 +554,9 @@ body {
 .tw-radio { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.15rem 0; }
 .tw-form { margin-block-end: 2rem; }
 .tw-form__note { font-size: 0.8rem; opacity: 0.75; }
-.tw-form__error { color: var(--cf-danger, #e2725b); }
+.tw-form__error { color: var(--cf-danger); }
 .tw-form__ok { opacity: 0.9; }
-.tw-inline-error { display: block; font-size: 0.8rem; color: var(--cf-danger, #e2725b); }
+.tw-inline-error { display: block; font-size: 0.8rem; color: var(--cf-danger); }
 .tw-visually-hidden {
   position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;

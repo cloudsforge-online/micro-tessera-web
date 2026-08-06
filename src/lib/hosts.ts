@@ -45,16 +45,27 @@ import { cloudsforgeHosts, type CloudsForgeHosts, type SurfaceKey } from '@cloud
  */
 export const PRODUCT: SurfaceKey = 'worlds'
 /**
- * The surface this application IS, for the footer. **Deliberately not `'worlds'`.**
+ * The surface this application IS. **Deliberately not `'worlds'`.**
  *
  * The two constants answer two different questions and collapsing them would make one of them
  * wrong. `PRODUCT` is what the BAR marks current, and the switcher is a list of platforms a
  * player chooses between — Tessera is played through Forge Worlds, so `worlds` is the honest
- * highlight there. The FOOTER lists surfaces, and Tessera is one: it has its own registry row and
- * its own hostname (`tessera` in @cloudsforge/ui's surfaces.ts). So "you are here" in the footer is
- * Tessera, and the footer's closing line reads Tessera's own blurb rather than Forge Worlds'.
+ * highlight there. This one is the surface's own identity: it has its own registry row and its own
+ * hostname (`tessera` in @cloudsforge/ui's surfaces.ts).
+ *
+ * ── IT WAS `FOOTER_SURFACE`, AND THE FOOTER WAS ONLY ITS FIRST CONSUMER ───────────────────────
+ *
+ * The design system's 1.1 head (`@cloudsforge/ui/seo`) asks the same question a second time, and
+ * the answer has to be the same one: `surfaceMeta` derives the `<title>`, the description, the
+ * Open Graph card and the robots directive from a registry row. Handing it `PRODUCT` would title
+ * every page of this client "Forge Worlds" and describe it with Forge Worlds' blurb — a whole
+ * platform's name on one title's pages, in the strings a stranger reads before arriving. So the
+ * name says what the value MEANS rather than where it is spent, which is what stops the next
+ * consumer reaching for `PRODUCT` because it is the one with the general-sounding name.
+ *
+ * Two consumers today: `CloudsForgeFooter`'s "you are here", and `DocumentMeta` in the shell.
  */
-export const FOOTER_SURFACE: SurfaceKey = 'tessera'
+export const SURFACE: SurfaceKey = 'tessera'
 
 
 /** The name reported to the observability ingest and shown in error copy. */

@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, it, test } from 'node:test'
 import { createElement as h, type ReactElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import { MAIN_ID } from '@cloudsforge/ui'
 
 import { withScreen, type Routes, type Screen as Rendered } from './dom.ts'
 import { assetSetAvailable, receiptFromManifest } from './asset-set.ts'
@@ -1149,14 +1150,33 @@ describe('BJ-TESSERA — the surface', () => {
 
       // The skip link is the FIRST focusable thing in the document, which is the only position
       // that makes it useful, and it points at the landmark rather than at a decoration.
+      //
+      // `MAIN_ID` from @cloudsforge/ui rather than the literal `#main` this asserted before: the
+      // link and its target are now `SkipLink` and `MainRegion`, which compose the href and the id
+      // from that ONE constant. Restating it here would be a third copy that could disagree with
+      // both — and disagree silently, since a skip link pointing at nothing still renders, still
+      // takes focus, and still looks exactly like a working one.
       const first = s.tabbables()[0]
       assert.ok(first, 'nothing on this page is focusable')
       assert.equal(
         first.getAttribute('href'),
-        '#main',
+        `#${MAIN_ID}`,
         `the first focusable element is not the skip link but ${first.tagName.toLowerCase()}`,
       )
-      assert.ok(s.document.getElementById('main'), 'the skip link points at nothing')
+      const target = s.document.getElementById(MAIN_ID)
+      assert.ok(target, 'the skip link points at nothing')
+      // ══════════════════════════════════════════════════════════════════════════════════════
+      // AND THE HALF THIS SURFACE WAS MISSING. A `<main>` is not focusable, so before
+      // `MainRegion` the fragment scrolled the page, left focus on the link itself, and sent the
+      // next Tab back into the company bar — a skip link that a keyboard reader activates and
+      // cannot tell whether anything happened, which is the failure the old comment in
+      // shell.tsx claimed to be guarding against.
+      // ══════════════════════════════════════════════════════════════════════════════════════
+      assert.equal(
+        target.getAttribute('tabindex'),
+        '-1',
+        'the main landmark is not focusable, so following the skip link leaves focus on the link',
+      )
 
       // Heading order, with no level skipped: a reader moving by heading must not fall from h1 to
       // h3 and have to guess whether they missed a section.

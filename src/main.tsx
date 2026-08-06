@@ -9,17 +9,36 @@
  *      a signed-out shell to a user who has just signed in, and would leave the code on screen
  *      for the length of a network round trip.
  *   3. Render last.
+ *
+ * Consent is primed between 1 and 2. See the note beside `initAnalytics()`.
  */
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@cloudsforge/ui/tokens.css'
 import '@cloudsforge/ui/ui.css'
 import './styles.css'
+import { initAnalytics } from '@cloudsforge/ui/consent'
 import { App } from './app.tsx'
 import { bootstrapSession } from './lib/api.ts'
 import { initObs } from './lib/obs.ts'
 
 initObs()
+
+/*
+ * Consent Mode, primed with every category DENIED before anything else runs — two pushes onto a
+ * plain array, no request, no cookie, no script. The analytics tag is loaded only if this reader
+ * granted consent on a previous visit; a first-time reader gets nothing at all until they press
+ * Accept in the banner the shell renders last.
+ *
+ * It goes SECOND rather than inside a component because the denied default has to be in place
+ * before any tag could conceivably arrive. A default installed after a script has begun running is
+ * a race, and the losing branch of that race sets a cookie.
+ *
+ * And before `bootstrapSession()` for the same reason it is before the render: the SSO hand-off is
+ * a network round trip, and a window in which a tag could arrive with storage permitted by default
+ * is exactly the window this call exists to close.
+ */
+initAnalytics()
 
 const container = document.getElementById('root')
 if (!container) throw new Error('#root is missing from index.html')

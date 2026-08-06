@@ -16,11 +16,19 @@
  * unauthenticated readiness surface, and to say why here rather than ship a probe that is wrong
  * half the time.
  */
-import { CloudsForgeBar, CloudsForgeFooter } from '@cloudsforge/ui'
-import { NavLink, Outlet } from 'react-router-dom'
-import { FOOTER_SURFACE, PRODUCT } from '../lib/hosts.ts'
+import { useEffect } from 'react'
+import {
+  CloudsForgeBar,
+  CloudsForgeFooter,
+  CookieBanner,
+  MainRegion,
+  SkipLink,
+} from '@cloudsforge/ui'
+import { applyHead, surfaceMeta } from '@cloudsforge/ui/seo'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { PRODUCT, SURFACE } from '../lib/hosts.ts'
 import { useSession } from '../lib/auth.tsx'
-import { NAV } from '../lib/routes.ts'
+import { NAV, routeFor } from '../lib/routes.ts'
 import { WalletStrip } from './wallet-strip.tsx'
 
 export function AppShell() {
@@ -29,14 +37,21 @@ export function AppShell() {
   return (
     <>
       {/*
-        The skip link is the first focusable thing in the document, and it is visually hidden until
-        it TAKES FOCUS, at which point it must become visible. A skip link that stays hidden when
-        focused is worse than none: a keyboard reader activates it and cannot tell whether anything
-        happened.
+        The skip link is the first focusable thing in the document, and it is now the SHARED one.
+
+        This client wrote its own — a `.tw-skip` anchor reading "Skip to the page", pointed at
+        `#main` — and it was half of the pattern. `<main id="main">` carried no `tabIndex={-1}`, so
+        a `<main>` is not focusable and in Chrome and Safari following the fragment scrolled the
+        page, left focus on the link, and sent the next Tab back into the second item of the
+        company bar. `MainRegion` below is the half that was missing; it sets the id and the
+        tabindex together, and `SkipLink` composes its href from the same constant, so the two
+        cannot disagree about the target the way a hand-written pair can.
+
+        The wording stays this surface's own rather than the shared default, because "the page" is
+        what is below on all seven screens — on `/` that is a canvas, and "Skip to content" would
+        promise a reader text.
       */}
-      <a className="tw-skip" href="#main">
-        Skip to the page
-      </a>
+      <SkipLink>Skip to the page</SkipLink>
       <CloudsForgeBar current={PRODUCT} account={account} onSignIn={() => signIn()} onSignOut={signOut} />
 
       <nav className="tw-nav" aria-label="World sections">
@@ -68,19 +83,150 @@ export function AppShell() {
       */}
       {account.signedIn && <WalletStrip />}
 
-      <main className="tw-main" id="main">
+      <DocumentMeta />
+      {/*
+        `MainRegion` rather than the hand-written `<main>` this file used to carry: same landmark,
+        same class, plus the `id` the shared `SkipLink` points at and the `tabIndex={-1}` that is
+        what actually moves focus into the page. The id is `cf-main` now rather than `main` —
+        nothing in this client referenced the old one except the skip link that is gone with it.
+      */}
+      <MainRegion className="tw-main">
         <Outlet />
-      </main>
+      </MainRegion>
 
       {/*
         The company footer, from @cloudsforge/ui. Every link in it is derived from the surface
         registry, so a new product appears here without this file changing — which is the reason
         the estate is not growing a fifth hand-rolled footer beside the four it already had.
 
-        `current` is FOOTER_SURFACE, not the bar's surface: see lib/hosts.ts for why those are two
+        `current` is SURFACE, not the bar's surface: see lib/hosts.ts for why those are two
         different questions. `account` decides only whether the operator surfaces are offered.
       */}
-      <CloudsForgeFooter current={FOOTER_SURFACE} account={account} />
+      <CloudsForgeFooter current={SURFACE} account={account} />
+
+      {/*
+        Last in the document, and therefore last in the tab order. That is deliberate: the banner
+        is a dialog and is explicitly NOT modal, so a player who came here to walk around a ward
+        can walk around it and answer afterwards. A consent banner that traps focus is the coercion
+        the regulation is about — and on this surface it would trap them one Tab away from a canvas
+        that is the whole product.
+
+        It renders nothing at all until it knows this reader has not already answered, and nothing
+        on an origin where analytics would not report anyway, which is every local stack.
+      */}
+      <CookieBanner />
     </>
   )
 }
+
+/**
+ * The title, description, Open Graph tags and canonical, kept in step with the address.
+ *
+ * A component in the shell rather than a hook each page calls, because the failure mode of the
+ * second shape is the page that forgets — and the page that forgets is the one added last, which
+ * is the one nobody has bookmarked and therefore the one nobody notices is titled with the
+ * previous page's title.
+ *
+ * ── WHICH SURFACE KEY, AND WHY IT IS NOT THE BAR'S ────────────────────────────────────────────
+ *
+ * `SURFACE` (`'tessera'`), never `PRODUCT` (`'worlds'`). They are two answers to two questions and
+ * `lib/hosts.ts` argues both: the bar marks the PLATFORM a player chose, and the head names the
+ * SURFACE they are on. Handing `surfaceMeta` the product key would title every page of this client
+ * "Forge Worlds" and describe it with the platform's blurb — including in the Open Graph card,
+ * which is what a pasted link to somebody's parcel renders as.
+ *
+ * ── WHERE THE PAGE NAME COMES FROM ────────────────────────────────────────────────────────────
+ *
+ * `ROUTES`, which already decides the router, the navigation, the not-found list and nginx's
+ * enumerated locations — `test/routes.test.ts` fails the build when those drift — so deriving from
+ * it means the head cannot drift on its own either. The index passes NO title, because
+ * `surfaceMeta` renders a page titled with the surface's own name as just the name rather than as
+ * "Tessera — Tessera".
+ *
+ * ── WHAT THIS DOES NOT REPLACE ────────────────────────────────────────────────────────────────
+ *
+ * The static tags in `index.html`. Those are what a link-preview fetcher gets — the ones chat
+ * clients use generally do not execute JavaScript — so the shell keeps its own title, description
+ * and card, and this is the layer a browser and the crawlers that DO execute JavaScript see. That
+ * trade is inherited rather than introduced; it is written down at the top of `@cloudsforge/ui/seo`
+ * so the next person makes it deliberately instead of finding it in a link preview.
+ */
+function DocumentMeta() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    applyHead(
+      surfaceMeta(SURFACE, { description: DESCRIPTION, ...pageMeta(pathname) }),
+      window.location.origin,
+    )
+  }, [pathname])
+
+  return null
+}
+
+/**
+ * The sentence a stranger reads before they arrive, in the ONE place it is written.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * IT IS PASSED IN RATHER THAN LEFT TO THE REGISTRY, AND THAT IS THE OPPOSITE OF WHAT THE OTHER
+ * SURFACES DO.
+ *
+ * `surfaceMeta` composes a description from the surface's registry `blurb` when it is given none,
+ * and the blurb is one clause — "A world you build in a browser tab, played through Forge Worlds"
+ * — because its real job is a line under a name in a 264px switcher menu. `index.html` already
+ * carries a real description, written for this purpose and 200 characters of it, and `applyHead`
+ * UPDATES `meta[name=description]` IN PLACE. So leaving this to the registry would not add a
+ * description; it would replace a good one with a menu caption, on every navigation, invisibly —
+ * the served head and the shipped shell disagreeing about the same page. That is precisely the
+ * defect `site/index.html` records, where a title drifted from its application's and every search
+ * result carried a sentence the owner had asked to have removed.
+ *
+ * So there is one sentence and two copies of it, and the second copy is held down:
+ * `test/shared-chrome.test.ts` reads `index.html` and fails when the two are not byte-identical.
+ * A duplicated string with a test on it is a knowable copy; a duplicated string without one is how
+ * this happened in the first place.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+export const DESCRIPTION =
+  'Tessera — claim ground for free, fire objects out of a prompt, and get paid in EMBER when ' +
+  'someone buys what you made. A persistent isometric world in a browser tab.'
+
+/** What this address is, as far as the head is concerned. Derived from `ROUTES`, never restated. */
+function pageMeta(pathname: string): { title?: string; path: string; robots?: string } {
+  // `/wards/` and `/wards` are one page and must not produce two canonicals; `surfaceMeta`
+  // normalises the path it is given, and this normalises the LOOKUP for the same reason.
+  const segment = pathname.replace(/\/+$/, '')
+  const declared = routeFor(segment === '' ? '/' : segment)
+
+  if (!declared) {
+    /*
+     * An address this client does not route. nginx has already answered 404 and served this shell
+     * inside it, so the page a reader sees is NotFoundPage — and the head must say the same thing.
+     * `noindex` because a not-found page that invites indexing is how a broken link becomes a
+     * search result; `follow` because every link on that screen is a real route of this surface.
+     */
+    return { title: 'Not found', path: pathname, robots: 'noindex, follow' }
+  }
+
+  // The index is the surface itself, and a route with no navigation label has no name to give:
+  // passing no title at all is how `surfaceMeta` is told to use the surface's own.
+  const base =
+    declared.path === '/' || declared.nav === null
+      ? { path: pathname }
+      : { title: declared.nav, path: pathname }
+
+  /*
+   * A GATED ADDRESS IS SERVED AND NOT ADVERTISED.
+   *
+   * `/land`, `/kiln` and `/workshop` are behind `ProtectedRoute`: a crawler arriving at one is
+   * shown a sign-in invitation, never the page, so indexing it publishes an address whose content
+   * no search user can ever reach. `noindex, follow` rather than `nofollow` — the navigation on
+   * that screen leads to real public pages and there is no reason to refuse them.
+   *
+   * This is the same decision the sitemap in `nginx.conf` makes, made twice on purpose: a sitemap
+   * is an invitation and a robots directive is an instruction, and the two must not disagree.
+   * `SITEMAP_PATHS` in `src/lib/routes.ts` is the other half, derived from the same field.
+   */
+  return declared.protected ? { ...base, robots: 'noindex, follow' } : base
+}
+
