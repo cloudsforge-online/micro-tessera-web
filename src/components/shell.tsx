@@ -188,8 +188,8 @@ function DocumentMeta() {
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 export const DESCRIPTION =
-  'Tessera — claim ground for free, fire objects out of a prompt, and get paid in EMBER when ' +
-  'someone buys what you made. A persistent isometric world in a browser tab.'
+  'Claim ground for free, fire objects out of a prompt, and get paid in EMBER when someone ' +
+  'buys what you made. A persistent isometric world in a browser tab.'
 
 /** What this address is, as far as the head is concerned. Derived from `ROUTES`, never restated. */
 function pageMeta(pathname: string): { title?: string; path: string; robots?: string } {

@@ -20,7 +20,7 @@
  * body (the service reads the authenticated one and nothing else), and the dwell is the elapsed
  * wall-clock seconds on the page — not a number this component chooses.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   getParcel,
@@ -40,6 +40,35 @@ import { signIn } from '../lib/api.ts'
 import { WorldCanvas } from '../components/world-canvas.tsx'
 import { Empty, Failed, Loading, SignedOut } from '../components/states.tsx'
 
+/**
+ * The four whole-page states, under a heading that says where the reader is.
+ *
+ * Every branch below replaces the ENTIRE page, and each one used to render a bare `<p>` — so on a
+ * deployment with no ward open, the front door of Tessera was one sentence, "The Commons opens
+ * first. Until it does there is nowhere to stand.", with no heading of any level above it. A
+ * screen reader's heading list came back empty, and a stranger who followed a link here was told
+ * nothing about what Tessera is before being told it was shut.
+ *
+ * The states themselves stay as they are: `Empty`, `Failed` and the rest are also used mid-page,
+ * inside sections that already have their own heading, and promoting their titles to `h1` there
+ * would put two first-level headings on one screen.
+ */
+function Doorway({ children }: { children: ReactNode }) {
+  return (
+    <div className="tw-arrivals">
+      <header className="tw-page-head">
+        <h1>A world made by the people standing in it</h1>
+        <p className="tw-page-head__meta">
+          Tessera runs in a browser tab. Ground is claimed for nothing, you describe the things you
+          want and they are made for you, and anything you make is yours to keep, stand up on your
+          land, or sell to somebody else for EMBER.
+        </p>
+      </header>
+      {children}
+    </div>
+  )
+}
+
 export function WorldPage() {
   const [params, setParams] = useSearchParams()
   const parcelId = params.get('parcel')
@@ -50,15 +79,32 @@ export function WorldPage() {
   // `ProtectedRoute` (see src/app.tsx and src/lib/routes.ts). Since the service authenticates its
   // reads, a stranger following a link here gets a 401, and until now the first and only thing
   // they saw was "That did not load". Checked before the generic failure for that reason.
-  if (wards.notice?.unauthenticated) return <SignedOut onSignIn={() => signIn()} />
-  if (wards.notice) return <Failed notice={wards.notice} onRetry={wards.reload} />
-  if (wards.data === undefined) return <Loading label="Finding the Mosaic" />
+  if (wards.notice?.unauthenticated)
+    return (
+      <Doorway>
+        <SignedOut onSignIn={() => signIn()} />
+      </Doorway>
+    )
+  if (wards.notice)
+    return (
+      <Doorway>
+        <Failed notice={wards.notice} onRetry={wards.reload} />
+      </Doorway>
+    )
+  if (wards.data === undefined)
+    return (
+      <Doorway>
+        <Loading label="Finding the Mosaic" />
+      </Doorway>
+    )
   if (wards.data.wards.length === 0) {
     return (
-      <Empty
-        title="No ward has opened yet"
-        hint="The Commons opens first. Until it does there is nowhere to stand."
-      />
+      <Doorway>
+        <Empty
+          title="No neighbourhood has opened yet"
+          hint="The first one is the Commons, and it has not been opened on this deployment. Nothing is broken and there is nothing to wait for — come back once it has."
+        />
+      </Doorway>
     )
   }
 
@@ -92,7 +138,11 @@ function Arrivals({
   return (
     <div className="tw-arrivals">
       <header className="tw-page-head">
-        <h1>Arrive</h1>
+        {/*
+          Not "Arrive". A one-word imperative on the front page of a product names the action the
+          reader has already taken by being here, and says nothing about what they arrived at.
+        */}
+        <h1>Walk into a world other people built</h1>
         <p className="tw-page-head__meta">
           Any place with its gate open is a place you can walk straight into. There is no download
           and no installer, because you are standing in it. Tessera is one of the titles inside
