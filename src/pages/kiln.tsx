@@ -323,9 +323,12 @@ function SeedObjectsGap() {
         capacity is a convenience rather than the price of being able to build at all.
       </p>
       <p role="status">
-        You will not see them on this screen: the service has no way to list them, and{' '}
-        <code>GET /v1/objects</code> hands back only what you made yourself. We would rather show
-        you a gap than fill it with something that is not them.
+        {/* Provenance: the only list route is `GET /v1/objects`, and it is scoped to the caller's
+            own creations, so the seed set cannot be fetched. Said here rather than on screen —
+            a player has no use for the route name, only for the fact that the shelf is empty. */}
+        You will not see them on this screen: the only list this service can produce is of things
+        you made yourself, and the seed objects are not among them. We would rather show you a gap
+        than fill it with something that is not them.
       </p>
     </section>
   )

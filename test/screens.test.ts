@@ -348,10 +348,20 @@ test('BJ-TES-18 [T1/presentation] the seed set is named as absent rather than su
     { ...SESSION, routes: { 'GET /v1/objects': { body: { objects: [] } } } },
     async (s) => {
       s.byRole('heading', 'The 96 seed objects')
+      // The claim this test is really about is that the gap is NAMED rather than papered over
+      // with a substitute shelf. It used to be pinned to the phrase "the service has no way to
+      // list them", which described the service to a player; the page now describes the player's
+      // own situation instead. Same claim, so the assertion follows the sentence rather than
+      // holding the old one in place.
       assert.match(
         s.text(),
-        /the service has no way to list them/,
-        'the missing seed-object route is not stated',
+        /the seed objects are not among them/,
+        'the seed set is not named as absent',
+      )
+      assert.doesNotMatch(
+        s.text(),
+        /\bGET \/v\d/,
+        'a route name is being shown to somebody playing a game',
       )
       s.clean('the seed gap')
     },
