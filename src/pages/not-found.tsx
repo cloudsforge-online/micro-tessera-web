@@ -12,7 +12,12 @@ export function NotFoundPage() {
       <span className="tw-state__icon" aria-hidden="true">
         ◇
       </span>
-      <p className="tw-state__title">Nothing stands at this address</p>
+      {/*
+        An h1, not a p. This was the one page in the bundle with no heading of any level, so a
+        screen reader's heading list came back empty and there was nothing to jump to. The class
+        sets the size and clears the margin, so it looks exactly as it did.
+      */}
+      <h1 className="tw-state__title">Nothing stands at this address</h1>
       <p className="tw-state__hint">Try one of these instead:</p>
       <ul className="tw-notfound">
         {ROUTES.map((route) => (
