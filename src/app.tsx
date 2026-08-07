@@ -10,6 +10,7 @@
  * something, in exchange for a smaller bundle on five pages where they are not.
  */
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { ScrollToTop } from './components/scroll-to-top.tsx'
 import { AppShell } from './components/shell.tsx'
 import { AuthProvider, ProtectedRoute } from './lib/auth.tsx'
 import { DiscoverPage } from './pages/discover.tsx'
@@ -23,6 +24,7 @@ import { WorldPage } from './pages/world.tsx'
 export function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <Routes>
           <Route element={<AppShell />}>
