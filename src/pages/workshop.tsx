@@ -50,10 +50,24 @@ export function WorkshopPage() {
     <div className="tw-workshop">
       <header className="tw-page-head">
         <h1>Your Workshop</h1>
+        {/*
+          EMBER HAS NO MONETARY VALUE, AND THIS PARAGRAPH USED TO SAY OTHERWISE.
+
+          Until 2026-08-08 this read "real EMBER … It is money, not points: take it out to a wallet
+          you control the same afternoon". Three claims, none of them ours to make.
+          docs/ecosystem/18-build-status.md:38 records that EMBER has no market, no listing, no
+          liquidity and no price on either network; "it is money" contradicts the estate's own
+          ledger. "The same afternoon" is a settlement-timing commitment and nothing on this
+          deployment measures withdrawal latency, so it could not have been retracted by evidence
+          either. What survives is the mechanism — you are credited, you can withdraw, you can
+          spend, you can mine — plus the denial, stated rather than implied.
+
+          Retyping any of it fails test/content.test.ts.
+        */}
         <p className="tw-page-head__meta">
-          Sell what you have made and you are paid in Sparks — real EMBER, put there by the
-          person who bought it. It is money, not points: take it out to a wallet you control the
-          same afternoon, spend it anywhere in the ecosystem, or mine more of it in a browser tab.
+          Sell what you have made and you are paid in Sparks — EMBER, credited to your account by
+          the person who bought it. You can withdraw it to a wallet you control, spend it anywhere
+          in the ecosystem, or mine more of it in a browser tab. EMBER has no market price.
         </p>
       </header>
 
@@ -207,8 +221,16 @@ function ListingForm({
             aria-describedby="price-help"
             required
           />
+          {/*
+            The definition stays; the anchor is gone. "Ordinary things go for around 400 of them"
+            was a price anchor with no distribution behind it — there are no sale prices for 400 to
+            be near, because nobody outside the project has used any of this
+            (docs/ecosystem/18-build-status.md:38, :50). The split table below this form already
+            shows a seller exactly how whatever price they type divides between fee, royalty and
+            proceeds, which is the honest version of the guidance the anchor was reaching for.
+          */}
           <span id="price-help" className="tw-field__help">
-            A Spark is a millionth of an EMBER. Ordinary things go for around 400 of them.
+            A Spark is a millionth of an EMBER.
           </span>
         </label>
 
