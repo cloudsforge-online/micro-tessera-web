@@ -18,11 +18,11 @@ three-figure wallet strip.
 ```
 pnpm install          # @cloudsforge/ui is link:../ui/packages/ui — the sibling must be checked out
 pnpm dev              # vite 5172
-pnpm test             # node:test, 101 tests
+pnpm test             # node:test, 141 tests
 pnpm typecheck
 pnpm build
 pnpm measure          # drives a real Chromium; writes docs/render-budget.json. Minutes, not seconds.
-bash test/red.sh      # breaks all 50 guards in turn and requires each to go red
+bash test/red.sh      # breaks all 58 guards in turn and requires each to go red
 ```
 
 ---
@@ -118,6 +118,26 @@ and name. `mount()` **refuses to return a screen whose body is under 40 characte
 that 404s leaves the network perfectly idle and `domcontentloaded` fires anyway, so a smoke test
 passes against a blank page.
 
+### The copy scan: EMBER has no monetary value
+
+`test/content.test.ts` reads every `src/**/*.ts(x)` and `index.html`, strips comments, flattens
+whitespace, and refuses five families of claim: EMBER described as money, EMBER described as worth
+money, EMBER given a price, a settlement-timing promise, and a price anchor. It also asserts the
+denial — **"EMBER has no market price"** — is present in the two page heads that said the opposite
+until 2026-08-08 (`src/pages/workshop.tsx`, `src/pages/world.tsx`). The rule is
+`docs/ecosystem/18-build-status.md:38`: no market, no listing, no liquidity, no price, on either
+network. `docs/ecosystem/32-roadmap-ui-and-content.md` §4.1 recorded this surface as the estate's
+only violation of it and ranked it first in the whole track.
+
+Two properties are worth knowing before editing it. **Comments are stripped**, because
+`workshop.tsx` now quotes the deleted sentence in a comment so it is not retyped by accident —
+this repository has four times had a scan match its own rationale. And **whitespace is flattened**,
+because the deleted promise was "…you control the / same afternoon" across two source lines, so a
+line-oriented scan would have gone green over the exact string it forbids. Every rule carries the
+real sentence it must catch *and* live copy it must not fire on: `land.tsx` says "ground does not
+cost anything", `discover.tsx` says "money will not buy you a fourth", and a scan that failed on
+those would have been excepted, then loosened, then deleted.
+
 ### The browser-journey catalogue
 
 `test/journeys.ts` is this surface's slice of `docs/ecosystem/22-browser-journeys.md` **as data**,
@@ -203,7 +223,13 @@ the lines just above it already do.
 ### Proving the tests can fail
 
 `bash test/red.sh` applies one real defect at a time, runs the whole suite, requires a failure and
-restores the file. **55 guards, 55 proven red, none stayed green.**
+restores the file. **58 guards. 55 were proven red in a full run, and none stayed green.**
+
+Guards **56, 57 and 58** were added on 2026-08-08 with `test/content.test.ts` and have *not* been
+through a full `red.sh` run. Each was applied by hand and proven red against `content.test.ts`
+alone — the money claim restored, the denial deleted, the price anchor put back — which proves the
+guard catches the defect but not that the mutation leaves the rest of the suite intact. Recorded
+as measured rather than as complete, because "58 guards, 58 proven red" is a sentence nobody ran.
 
 Three of those fifty put back a defect this suite *found* rather than a property it confirmed. All
 three commit forms — fire an object, list one, claim ground — guarded themselves with `if (busy)
@@ -249,7 +275,7 @@ So every job was reproduced by hand instead, against **fresh clones in a scratch
 only this repository and micro-ui present — which is exactly what web-ci.yml checks out:
 
 * **build** — install sibling, install, typecheck, test, build, `dist/index.html` exists. Beside
-  the estate the suite is **101 tests, 101 pass**; in a scratch checkout the assertions that read
+  the estate the suite is **141 tests, 141 pass** (measured 2026-08-08); in a scratch checkout the assertions that read
   `../tessera` and `../tessera-assets` **skip** rather than pass, which is worth knowing about
   rather than being reassured by.
 * **runtime-hosts** — all four checks run verbatim. The first one **failed**, on test fixtures that

@@ -149,11 +149,21 @@ function Arrivals({
           Forge Worlds, so the account you signed in with is the same account that plays Emberkin
           and Aetherholm, and what you own travels between all three.
         </p>
+        {/*
+          The same correction as workshop.tsx's page head, in its milder form. "Payment is EMBER,
+          which you can withdraw" sat one clause after "sell it if somebody wants it" and left a
+          reader to finish the sentence the estate refuses to finish: that the coin is worth money.
+          docs/ecosystem/18-build-status.md:38 — no market, no listing, no liquidity, no price, on
+          either network. The mechanism is unchanged and true; the denial is now stated on the
+          front door rather than left to the Workshop, because this is the page a stranger meets
+          first. test/content.test.ts holds it.
+        */}
         <p className="tw-page-head__meta">
           Everything here is made by the people in it. You take ground for nothing, describe a
           thing until the Kiln fires it, put it down where visitors will find it, and sell it if
-          somebody wants it. Payment is EMBER, which you can withdraw to a wallet you control — or
-          mine yourself, in a browser tab, on a key that never leaves your machine.
+          somebody wants it. You are paid in EMBER, which you can withdraw to a wallet you control
+          — or mine yourself, in a browser tab, on a key that never leaves your machine. EMBER has
+          no market price.
         </p>
       </header>
 

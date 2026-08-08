@@ -523,6 +523,37 @@ mutate 'an unnameable sprite is a hole, not a request' src/lib/sprites.ts \
       url = `/world-assets/${path}.png`
     }'
 
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# 56-58. EMBER HAS NO MONETARY VALUE (test/content.test.ts).
+#
+# Until 2026-08-08 the Workshop page head read "real EMBER … It is money, not points: take it out
+# to a wallet you control the same afternoon", and the price field read "Ordinary things go for
+# around 400 of them". 18-build-status.md:38 records that EMBER has no market, no listing, no
+# liquidity and no price on either network; nothing here measures a withdrawal's latency; and
+# there is no distribution of sale prices for 400 to be near, because nobody outside the project
+# has used any of this. 32-roadmap-ui-and-content.md §4.1 called it the estate's most urgent copy
+# change and the only place in it that tells a reader EMBER is money and quotes a price.
+#
+# The three mutations put each sentence back. They are the whole reason the scan exists: this is
+# not a defect anybody catches in review, because all three read as good writing.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+# 56. The monetary-value claim and the settlement promise, restored verbatim.
+mutate 'no copy says EMBER is money' src/pages/workshop.tsx \
+  'You can withdraw it to a wallet you control, spend it anywhere' \
+  'It is money, not points: take it out to a wallet you control the same afternoon, spend it anywhere'
+
+# 57. The denial deleted while everything else stays true. The scan must fail on the ABSENCE, not
+#     only on a forbidden phrase — a page that simply stops saying it is the likelier regression.
+mutate 'the page head still carries the denial' src/pages/workshop.tsx \
+  ' EMBER has no market price.' \
+  ''
+
+# 58. The price anchor, restored to the field help it was deleted from.
+mutate 'no copy anchors a price' src/pages/workshop.tsx \
+  'A Spark is a millionth of an EMBER.' \
+  'A Spark is a millionth of an EMBER. Ordinary things go for around 400 of them.'
+
 echo
 printf 'guards proven red: %d   guards that stayed green: %d   not proven here: %d\n' \
   "$pass" "$fail" "$skipped"
