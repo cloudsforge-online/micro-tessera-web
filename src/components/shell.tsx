@@ -30,10 +30,11 @@ import {
   MainRegion,
   SkipLink,
   SubNav,
+  miningOnHub,
 } from '@cloudsforge/ui'
 import { applyHead, surfaceMeta } from '@cloudsforge/ui/seo'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { PRODUCT, SURFACE } from '../lib/hosts.ts'
+import { PRODUCT, SURFACE, hosts } from '../lib/hosts.ts'
 import { useSession } from '../lib/auth.tsx'
 import { NAV, routeFor } from '../lib/routes.ts'
 import { WalletStrip } from './wallet-strip.tsx'
@@ -59,7 +60,29 @@ export function AppShell() {
         promise a reader text.
       */}
       <SkipLink>Skip to the page</SkipLink>
-      <CloudsForgeBar current={PRODUCT} account={account} onSignIn={() => signIn()} onSignOut={signOut} />
+      {/*
+        `mining` is the design system's control, and it lands immediately before the account menu
+        on all seven screens this client serves rather than on one of them.
+
+        The owner's report was that starting a browser miner is "hidden deep in mining page". The
+        bar is the only chrome every address of every surface renders, so it is the only place the
+        offer can be made once and be everywhere. What THIS client passes is `miningOnHub()`, the
+        `elsewhere` state: a session is a WebSocket and two Web Workers pinned to one origin, and
+        `hub.<apex>` is not this origin — nothing in this bundle can start, observe or stop one
+        over there. So it renders an ANCHOR to the surface that can, which is middle-clickable,
+        openable in a new tab and legible to everything that reads links. An `onClick` standing in
+        for a destination is what the shared `SkipLink` above exists to stop this file doing again.
+
+        `hosts().hub`, never a written-out URL. This client is served from localhost on 4022, from
+        a preview host and from the apex, and a literal would be correct on exactly one of them.
+      */}
+      <CloudsForgeBar
+        current={PRODUCT}
+        account={account}
+        onSignIn={() => signIn()}
+        onSignOut={signOut}
+        mining={miningOnHub(hosts().hub)}
+      />
 
       {/*
         The strip of sections, and it is now the SHARED one.
