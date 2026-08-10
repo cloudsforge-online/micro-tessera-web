@@ -77,10 +77,29 @@ function classesUsed(): string[] {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) walk(full)
       else if (extname(entry.name) === '.tsx' || extname(entry.name) === '.ts') {
-        for (const m of readFileSync(full, 'utf8').matchAll(
-          /className=(?:"([^"]*)"|\{`([^`]*)`\})/g,
-        )) {
-          for (const cls of `${m[1] ?? ''} ${m[2] ?? ''}`.split(/[\s${}]+/)) {
+        // Comments off first, and for the same reason CSS has them stripped above: shell.tsx's
+        // own note about the skip link says the landmark id is `cf-main` now, in backticks, and a
+        // scan that reads prose reports a class the design system does not declare and is right
+        // about nothing. A guard that fires on its own explanation trains people to delete the
+        // explanation. `//` is only treated as a comment when it is not the `://` of a URL.
+        const src = readFileSync(full, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+        for (const m of src.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)) {
+          for (const cls of `${m[1] ?? ''} ${m[2] ?? ''}`.split(/[^A-Za-z0-9_-]+/)) {
+            if (cls.startsWith('cf-')) found.add(cls)
+          }
+        }
+        // …and every backtick template anywhere in the file, because react-router's `NavLink`
+        // takes `className` as a FUNCTION of the active state — `className={({ isActive }) =>
+        // `cf-subnav__link${…}`}` — and the literal is nowhere near the `className=` that leads to
+        // it. A scan anchored on `className=` misses exactly the classes that carry current-state,
+        // which are the ones a rename in the design system would strand.
+        for (const m of src.matchAll(/`([^`]*)`/g)) {
+          // Split on anything a class name cannot contain — not just whitespace and `${}`. The
+          // interpolated branch reads `? ' cf-subnav__link--current' : ''`, so a looser split
+          // leaves the quote glued to the name and the class goes unseen.
+          for (const cls of (m[1] ?? '').split(/[^A-Za-z0-9_-]+/)) {
             if (cls.startsWith('cf-')) found.add(cls)
           }
         }
@@ -123,12 +142,13 @@ describe('the stylesheet names only tokens and classes that exist', () => {
 
   it('every cf- class this bundle names is declared by the design system', () => {
     const used = classesUsed()
-    // Two, and only two: `.cf-btn` and `.cf-num`, both in src/components/states.tsx. The header of
-    // src/styles.css listed seven — `.cf-btn--ember`, `.cf-input`, `.cf-input--mono`, `.cf-select`
-    // and `.cf-sr` besides — and this bundle names none of those five anywhere. The list was
-    // aspirational; the assertion is what the file actually does.
-    assert.ok(used.length >= 2, `found ${used.length} cf- classes, which is too few to be right`)
-    for (const expected of ['cf-btn', 'cf-num']) {
+    // Four: `.cf-btn` and `.cf-num` in src/components/states.tsx, and the two the sub-nav's links
+    // carry in src/components/shell.tsx. The header of src/styles.css listed seven —
+    // `.cf-btn--ember`, `.cf-input`, `.cf-input--mono`, `.cf-select` and `.cf-sr` besides — and
+    // this bundle names none of those five anywhere. The list was aspirational; this is what the
+    // bundle actually does.
+    assert.ok(used.length >= 4, `found ${used.length} cf- classes, which is too few to be right`)
+    for (const expected of ['cf-btn', 'cf-num', 'cf-subnav__link', 'cf-subnav__link--current']) {
       assert.ok(used.includes(expected), `.${expected} is no longer used; this list is out of date`)
     }
     const missing = used.filter((cls) => !declared.has(cls))
@@ -143,6 +163,58 @@ describe('the stylesheet names only tokens and classes that exist', () => {
   it('uses no var() fallback, because a fallback is where a literal hides', () => {
     const fallbacks = [...CSS.matchAll(/var\(--cf-[a-z0-9-]+\s*,/g)].map((m) => m[0])
     assert.deepEqual(fallbacks, [], `src/styles.css uses a var() fallback: ${fallbacks.join(', ')}`)
+  })
+})
+
+describe('the strip of sections is the design system\u2019s, and no local copy survives', () => {
+  /*
+   * PINNED IN BOTH DIRECTIONS, after the pattern explorer-web/test/tokens.test.ts set for a class
+   * that moved into the design system. Asserting only that `.cf-subnav*` exists would pass with
+   * `.tw-nav*` still sitting in this file, shadowing it or fighting it depending on order; and
+   * asserting only that `.tw-nav*` is gone would pass if the shared classes were renamed upstream
+   * and this surface rendered a strip with no rules at all. Both halves, or neither is worth much.
+   */
+  it('ui.css declares every class the shared strip needs', () => {
+    for (const cls of ['cf-subnav', 'cf-subnav__inner', 'cf-subnav__link', 'cf-subnav__link--current']) {
+      assert.ok(declared.has(cls), `@cloudsforge/ui no longer declares .${cls}`)
+    }
+  })
+
+  it('and it is the shared strip that scrolls, rather than breaking its labels', () => {
+    // The defect the shared component exists to close, read off the bytes this bundle serves
+    // rather than assumed: nine of the ten copies in the estate had neither of these.
+    const rule = /\.cf-subnav__inner\s*\{([^}]*)\}/.exec(UI)?.[1] ?? ''
+    assert.match(rule, /overflow-x:\s*auto/)
+    assert.match(/\.cf-subnav__link\s*\{([^}]*)\}/.exec(UI)?.[1] ?? '', /white-space:\s*nowrap/)
+  })
+
+  it('no .tw-nav rule is left behind in this stylesheet', () => {
+    const survivors = [...new Set([...CSS.matchAll(/\.tw-nav[a-z0-9_-]*/g)].map((m) => m[0]))]
+    assert.deepEqual(
+      survivors,
+      [],
+      `src/styles.css still declares ${survivors.join(', ')}. The strip is SubNav from ` +
+        '@cloudsforge/ui now; a local copy beside it is the drift this change removed.',
+    )
+  })
+
+  it('and this stylesheet lays nothing of its own back over the shared strip', () => {
+    /*
+     * NOT a blanket ban on `is-active`: `.tw-map__lane.is-active` and `.tw-city-tab.is-active` are
+     * this client's own components and keep their own modifier name. What may not come back is a
+     * LOCAL RULE ON A SHARED SELECTOR — `.cf-subnav__link { … }` here would fight ui.css from a
+     * second file with no note explaining why, which is how the ten copies started. The contrast
+     * argument the deleted `.tw-nav__link.is-active` carried is answered by the shared rule itself
+     * (`color: var(--cf-fg)`, full-strength foreground, above the 4.5:1 text step on either
+     * scheme); see the note where the block used to be. If it ever stops being answered, change
+     * ui.css and this assertion together, rather than quietly overriding here.
+     */
+    const local = [...new Set([...CSS.matchAll(/\.cf-subnav[a-z0-9_-]*/g)].map((m) => m[0]))]
+    assert.deepEqual(
+      local,
+      [],
+      `src/styles.css declares a rule on ${local.join(', ')}, which the design system owns.`,
+    )
   })
 })
 
