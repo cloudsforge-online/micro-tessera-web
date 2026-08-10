@@ -2,7 +2,7 @@
  * The chrome this surface takes from @cloudsforge/ui 1.1, driven rather than read.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
- * FOUR THINGS, AND THREE OF THEM CLOSE A DEFECT RATHER THAN RESTYLE ANYTHING.
+ * FIVE THINGS, AND FOUR OF THEM CLOSE A DEFECT RATHER THAN RESTYLE ANYTHING.
  *
  *   - The document head follows the ADDRESS. Every page of this client was titled "Tessera"
  *     before, including the Kiln a player leaves open for the minute a firing takes.
@@ -14,6 +14,8 @@
  *   - The skip link's target takes focus, which is the half this repository was missing —
  *     `BJ-A11Y-12` in `journeys.test.ts` holds that one, beside the landmark and heading checks it
  *     already made.
+ *   - BROWSER MINING IS OFFERED BESIDE THE ACCOUNT, on every address rather than on one page of one
+ *     other surface, and it promises no payment.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * WHY THE MEASUREMENT ID IS INJECTED INTO THE HARNESS'S HEAD
@@ -36,11 +38,11 @@ import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
 import { createElement as h } from 'react'
 import { surfaceMeta } from '@cloudsforge/ui/seo'
-import { surface } from '@cloudsforge/ui'
+import { HUB_MINE_PATH, NOT_PAID_CLAUSE, surface } from '@cloudsforge/ui'
 import { withScreen, type Screen } from './dom.ts'
 import { App } from '../src/app.tsx'
 import { DESCRIPTION } from '../src/components/shell.tsx'
-import { SURFACE } from '../src/lib/hosts.ts'
+import { SURFACE, hosts } from '../src/lib/hosts.ts'
 import { ROUTES } from '../src/lib/routes.ts'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -325,5 +327,75 @@ describe('the consent banner', () => {
       },
       { analytics: true },
     )
+  })
+})
+
+/* ── browser mining, from the bar ───────────────────────────────────────────────────────────── */
+
+describe('the mining control in the bar', () => {
+  /*
+   * The owner's report was that starting a browser miner is "hidden deep in mining page, it should
+   * be easily found near the account on all pages". It is in the shared chrome now, so it is on all
+   * seven screens of this client — and it is asserted by MOUNTING THE APP, for the same reason
+   * everything else in this file is: a shell that passes the prop and a bar that drops it are
+   * indistinguishable in source, and the whole failure this repository is arranged against is a
+   * component reporting success while serving nothing.
+   *
+   * What this client renders is the `elsewhere` state. The miner is a WebSocket and two Web Workers
+   * on `hub.<apex>`, a different origin, so nothing here can start, observe or stop a session;
+   * pressing one is asserted in micro-hub-web, which mounts it.
+   */
+
+  it('offers mining beside the account, as a link to the surface that runs it', async () => {
+    await atAddress('/', async (s) => {
+      const bar = s.document.querySelector('.cf-bar')
+      assert.ok(bar, 'this client no longer renders the company bar')
+      const found = [...bar.querySelectorAll('.cf-mine')]
+      assert.equal(found.length, 1, `expected one mining control in the bar, found ${found.length}`)
+      const mine = found[0] as Element
+
+      /*
+       * An anchor, not an onClick. A destination expressed as a handler cannot be middle-clicked or
+       * opened in a new tab, its target cannot be copied, and it is invisible to every check that
+       * reads links — which is how a wrong account destination survived on nineteen surfaces.
+       */
+      assert.equal(mine.tagName, 'A', 'the mining control is not a link')
+      assert.equal(
+        mine.getAttribute('href'),
+        `${hosts().hub}${HUB_MINE_PATH}`,
+        'the mining control does not point at Forge Hub’s mining address',
+      )
+
+      /*
+       * Beside the account as TAB ORDER rather than as a CSS neighbour. A stylesheet can move a box
+       * anywhere; only document order moves this, and the tab order is what a reader who never sees
+       * the layout actually gets.
+       */
+      const order = s.tabbables()
+      const account = s.byRole('button', 'Sign in')
+      assert.equal(
+        order.indexOf(account) - order.indexOf(mine),
+        1,
+        'the mining control is no longer immediately before the account in the tab order',
+      )
+
+      /*
+       * And it promises nothing the pool does not pay. `pool/src/payouts.ts` derives
+       * `payoutsImplemented` and it is false on this estate, which bites harder here than on most
+       * surfaces: this client already renders a wallet strip about somebody's EMBER, so a digit
+       * beside the word Mine would sit in a row of real balances and read as a third one.
+       */
+      const described = s.document.getElementById(mine.getAttribute('aria-describedby') ?? '')
+      assert.ok(described, 'the mining control carries no description for a screen reader')
+      assert.ok(
+        s.textOf(described).includes(NOT_PAID_CLAUSE),
+        'the mining control does not carry the not-paid clause',
+      )
+      assert.doesNotMatch(
+        `${s.textOf(mine)} ${s.textOf(described)}`,
+        /[$€£]|\d/,
+        'the mining control shows a figure, and nothing is paid',
+      )
+    })
   })
 })
