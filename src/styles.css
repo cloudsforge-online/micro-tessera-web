@@ -3,15 +3,26 @@
  *
  * Every colour, space, radius and type size is a `--cf-*` token from
  * `ui/packages/ui/src/tokens.css`, and every `cf-` class is declared by
- * `ui/packages/ui/src/ui.css` — `test/tokens.test.ts` proves both against a real checkout,
- * because an undefined custom property invalidates its whole declaration silently and a class
- * the design system does not declare fails exactly as quietly. There is NO hex literal, NO
+ * `ui/packages/ui/src/ui.css` — `test/styles.test.ts` proves both, because an undefined custom
+ * property invalidates its whole declaration silently and a class the design system does not
+ * declare fails exactly as quietly. There is NO hex literal, NO
  * rgb()/hsl(), and NO var() fallback anywhere below: a fallback is where a hard-coded colour
  * hides. The accent is Worlds' — set by data-cf-product on <html>, never restated here.
  *
- * Local classes are prefixed `tw-`. The shared ones this bundle uses: `.cf-btn`,
- * `.cf-btn--ember` (the one solid call to action — there is no `.cf-btn--primary`), `.cf-input`,
- * `.cf-input--mono`, `.cf-select`, `.cf-num`, `.cf-sr`.
+ * That claim named `test/tokens.test.ts` and had done since this file was written; no such file
+ * has ever existed in this repository, so nothing proved any of it. The half about type sizes was
+ * also false: the whole of "Tessera's own screens" at the foot of this file was written in
+ * literals until 2026-08-10 — fifteen `font-size`s and twenty-eight spacing declarations — while
+ * everything above it was tokenised. The note at the head of that block records what moved. Two
+ * `font-size` declarations there are still `em` ON PURPOSE and say why beside themselves.
+ *
+ * Local classes are prefixed `tw-`. The shared ones this bundle uses are TWO: `.cf-btn` and
+ * `.cf-num`, both in src/components/states.tsx. This list read `.cf-btn`, `.cf-btn--ember`,
+ * `.cf-input`, `.cf-input--mono`, `.cf-select`, `.cf-num` and `.cf-sr`; five of the seven are named
+ * nowhere in src/, which is what happens to a list nothing checks. `test/styles.test.ts` checks it
+ * now, in both directions — every `cf-` class this bundle names must be declared by ui.css, and the
+ * two above must still be named here. `.cf-btn--ember` remains the one solid call to action if this
+ * surface ever grows one; there is no `.cf-btn--primary`.
  */
 
 /* ---- shell ----------------------------------------------------------- */
@@ -497,66 +508,102 @@ body {
    No colour is restated: every value is a token from @cloudsforge/ui/tokens.css, and the accent
    is Forge Worlds' #6d9a49 by way of `data-cf-product="worlds"` on <html> (23-tessera.md §1.1 —
    a title wears its product's colour rather than claiming its own).
+
+   NEITHER WAS ANY LENGTH, UNTIL 2026-08-10, AND THAT IS THE DIFFERENCE BETWEEN THIS BLOCK AND THE
+   ONE ABOVE IT. Everything above spends `--cf-space-*` and `--cf-text-*`; everything below spent
+   fifteen literal `font-size`s and twenty-eight literal `gap`/`margin`/`padding` declarations, and
+   the two halves of one stylesheet had drifted apart accordingly. `--cf-text-md` was raised from
+   0.82rem to 1rem when the body step was fixed — the note is beside it in tokens.css — and a
+   literal cannot follow a token, so this client's own screens were set at 11.2–17.6px underneath
+   chrome the design system sets at 14–16px, and would have stayed there through the next move too.
+
+   Every one now names the nearest step. Nothing invents a step. Where a value fell exactly between
+   two steps it rounds UP, uniformly, because the defect being closed is undersized type and
+   undersized rhythm — rounding a tie down would close it in one place and reopen it in another.
+   The handful of lengths that are NOT on the scale each say why beside themselves; `test/styles.test.ts`
+   is what keeps the next literal out.
 ─────────────────────────────────────────────────────────────────────────────────────────────── */
 
 .tw-wallet {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
+  gap: var(--cf-space-2xl);
   align-items: flex-start;
-  padding: 0.75rem 1.25rem;
+  /* Was `0.75rem 1.25rem`. 1.25rem — 20px — is the tie: 4px from `--cf-space-xl` and 4px from
+     `--cf-space-2xl`. Rounded up, per the rule in the block header. */
+  padding: var(--cf-space-lg) var(--cf-space-2xl);
   border-block-end: 1px solid var(--cf-line);
 }
+/* A column floor for the wrapping figures — layout, not rhythm. Left a literal. */
 .tw-wallet__figure { min-width: 10rem; }
-.tw-wallet__name { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
-.tw-wallet__value { font-size: 1.1rem; font-variant-numeric: tabular-nums; margin: 0.1rem 0; }
-.tw-wallet__note { font-size: 0.75rem; opacity: 0.65; margin: 0; }
-.tw-wallet__gap { flex-basis: 100%; font-size: 0.8rem; opacity: 0.75; margin: 0.25rem 0 0; }
+.tw-wallet__name { font-size: var(--cf-text-xs); letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
+.tw-wallet__value { font-size: var(--cf-text-lg); font-variant-numeric: tabular-nums; margin: var(--cf-space-3xs) 0; }
+.tw-wallet__note { font-size: var(--cf-text-xs); opacity: 0.65; margin: 0; }
+.tw-wallet__gap { flex-basis: 100%; font-size: var(--cf-text-xs); opacity: 0.75; margin: var(--cf-space-2xs) 0 0; }
 
 /* The canvas fills its stage and the stage has a real height, because a canvas with no height is
-   a canvas that draws nothing and reports no error. */
+   a canvas that draws nothing and reports no error. The height is a viewport fraction and a pixel
+   ceiling — layout, and not a length the spacing scale has an opinion about. */
 .tw-world__stage { block-size: min(70vh, 720px); inline-size: 100%; overflow: hidden; border-radius: 6px; }
 .tw-world__canvas { inline-size: 100%; block-size: 100%; touch-action: none; cursor: grab; }
 .tw-world__canvas:active { cursor: grabbing; }
-.tw-world__stats { font-size: 0.85rem; opacity: 0.8; margin: 0.5rem 0 0; }
-.tw-world__ground { font-size: 0.85rem; opacity: 0.8; margin: 0.25rem 0 0; }
-.tw-world__missing { font-size: 0.85rem; margin: 0.25rem 0 0; }
+.tw-world__stats { font-size: var(--cf-text-sm); opacity: 0.8; margin: var(--cf-space-sm) 0 0; }
+.tw-world__ground { font-size: var(--cf-text-sm); opacity: 0.8; margin: var(--cf-space-2xs) 0 0; }
+.tw-world__missing { font-size: var(--cf-text-sm); margin: var(--cf-space-2xs) 0 0; }
 
-.tw-places { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.5rem;
+/* `minmax(16rem, 1fr)` is a grid track — the width below which a place's tier and coordinates
+   collide — so it is layout and stays a literal. The gap between the cards is rhythm and does not. */
+.tw-places { list-style: none; padding: 0; margin: var(--cf-space-xl) 0 0; display: grid; gap: var(--cf-space-sm);
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
-.tw-place { inline-size: 100%; text-align: start; display: flex; flex-wrap: wrap; gap: 0.5rem;
-  align-items: baseline; padding: 0.75rem 1rem; background: none; cursor: pointer;
+.tw-place { inline-size: 100%; text-align: start; display: flex; flex-wrap: wrap; gap: var(--cf-space-sm);
+  align-items: baseline; padding: var(--cf-space-lg) var(--cf-space-xl); background: none; cursor: pointer;
   border: 1px solid var(--cf-line-strong); border-radius: 6px; color: inherit; }
 .tw-place__tier { font-weight: 600; text-transform: capitalize; }
 .tw-place__where { font-variant-numeric: tabular-nums; opacity: 0.7; }
-.tw-place__gate { margin-inline-start: auto; font-size: 0.8rem; opacity: 0.8; }
+.tw-place__gate { margin-inline-start: auto; font-size: var(--cf-text-xs); opacity: 0.8; }
 
-.tw-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
-  padding: 0.1rem 0.4rem; border-radius: 3px; border: 1px solid currentColor; opacity: 0.8; }
+.tw-badge { font-size: var(--cf-text-2xs); text-transform: uppercase; letter-spacing: 0.05em;
+  padding: var(--cf-space-3xs) var(--cf-space-xs); border-radius: 3px; border: 1px solid currentColor; opacity: 0.8; }
+/*
+ * THE TWO `em` FONT SIZES BELOW ARE DELIBERATE AND ARE NOT LITERALS OF THE KIND THIS CHANGE IS
+ * ABOUT. Both are modifiers applied to a span INSIDE running text whose size varies with its host —
+ * `.tw-muted` sits inside a percentage on the wards screen and inside an option label on land, and
+ * `.tw-mono` sits inside table cells and inside `.tw-wallet__value`, which is `--cf-text-lg`. `em`
+ * means "85% of whatever this is in", which is the point: for `.tw-mono` it is the standard optical
+ * correction for monospace, whose glyphs read larger than a sans at the same nominal size. Pinning
+ * either to a step of the scale would fix it to one context and deform it in every other. They are
+ * named in `test/styles.test.ts`, so a THIRD one has to justify itself rather than slip in.
+ */
 .tw-muted { opacity: 0.65; font-size: 0.85em; }
 .tw-mono { font-family: var(--cf-font-mono); font-size: 0.85em; }
-.tw-footnote { font-size: 0.8rem; opacity: 0.7; margin-block-start: 1rem; }
-.tw-gap { margin-block-start: 2rem; }
-.tw-terms__list { display: flex; flex-wrap: wrap; gap: 2rem; margin: 0.5rem 0 1.5rem; }
-.tw-terms__list dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; }
-.tw-terms__list dd { margin: 0.15rem 0 0; }
-.tw-instances { margin: 0.5rem 0; }
-.tw-instances__row { display: flex; gap: 1rem; padding: 0.25rem 0; }
+.tw-footnote { font-size: var(--cf-text-xs); opacity: 0.7; margin-block-start: var(--cf-space-xl); }
+.tw-gap { margin-block-start: var(--cf-space-3xl); }
+.tw-terms__list { display: flex; flex-wrap: wrap; gap: var(--cf-space-3xl); margin: var(--cf-space-sm) 0 var(--cf-space-2xl); }
+.tw-terms__list dt { font-size: var(--cf-text-xs); text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; }
+.tw-terms__list dd { margin: var(--cf-space-3xs) 0 0; }
+.tw-instances { margin: var(--cf-space-sm) 0; }
+.tw-instances__row { display: flex; gap: var(--cf-space-xl); padding: var(--cf-space-2xs) 0; }
+/* A label-column floor, so the values line up down the list: layout, left a literal. */
 .tw-instances__row dt { font-weight: 600; min-inline-size: 7rem; }
 .tw-instances__row dd { margin: 0; }
 
-.tw-field { display: block; margin-block-end: 1rem; }
-.tw-field--inline { display: inline-flex; gap: 0.5rem; align-items: center; }
-.tw-field__label { display: block; font-size: 0.8rem; opacity: 0.8; margin-block-end: 0.25rem; }
-.tw-field__help { display: block; font-size: 0.75rem; opacity: 0.7; margin-block-start: 0.25rem; }
-.tw-field-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.tw-field { display: block; margin-block-end: var(--cf-space-xl); }
+.tw-field--inline { display: inline-flex; gap: var(--cf-space-sm); align-items: center; }
+.tw-field__label { display: block; font-size: var(--cf-text-xs); opacity: 0.8; margin-block-end: var(--cf-space-2xs); }
+.tw-field__help { display: block; font-size: var(--cf-text-xs); opacity: 0.7; margin-block-start: var(--cf-space-2xs); }
+.tw-field-row { display: flex; gap: var(--cf-space-xl); flex-wrap: wrap; }
+/* A flex basis — the width a field stops shrinking at before the row wraps. Layout. */
 .tw-field-row > .tw-field { flex: 1 1 12rem; }
-.tw-radio { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.15rem 0; }
-.tw-form { margin-block-end: 2rem; }
-.tw-form__note { font-size: 0.8rem; opacity: 0.75; }
+.tw-radio { display: flex; gap: var(--cf-space-sm); align-items: baseline; padding: var(--cf-space-3xs) 0; }
+.tw-form { margin-block-end: var(--cf-space-3xl); }
+.tw-form__note { font-size: var(--cf-text-xs); opacity: 0.75; }
 .tw-form__error { color: var(--cf-danger); }
 .tw-form__ok { opacity: 0.9; }
-.tw-inline-error { display: block; font-size: 0.8rem; color: var(--cf-danger); }
+.tw-inline-error { display: block; font-size: var(--cf-text-xs); color: var(--cf-danger); }
+/* The clip-rect idiom, and every length in it is part of the idiom rather than rhythm: a 1px box
+   pulled 1px out of flow, which is what keeps the text reachable by a screen reader while taking no
+   space. `--cf-space-3xs` is 2px and there is no negative step; replacing any of these would break
+   the technique rather than tokenise it. */
 .tw-visually-hidden {
   position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
