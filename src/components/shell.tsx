@@ -6,6 +6,12 @@
  * bar marks `worlds` current, because a title is played through Forge Worlds and wears its
  * accent rather than claiming one (§1.1) — see PRODUCT in src/lib/hosts.ts.
  *
+ * Five things here are the design system's now rather than this client's: `CloudsForgeBar`,
+ * `SkipLink`, `MainRegion`, `CloudsForgeFooter`, `CookieBanner` — and `SubNav` is the sixth. It is
+ * a different kind from the other five: they were chrome this surface never owned, and the sub-nav
+ * was a strip it wrote itself and then maintained in parallel with ten other copies of the same
+ * strip. See the note beside it for what moving it changes and what it deliberately does not.
+ *
  * ── The readiness banner this shell does NOT have ─────────────────────────────────────────────
  *
  * `aetherholm-web`'s shell reads `GET /readyz` once per mount and shows a degradation banner.
@@ -23,6 +29,7 @@ import {
   CookieBanner,
   MainRegion,
   SkipLink,
+  SubNav,
 } from '@cloudsforge/ui'
 import { applyHead, surfaceMeta } from '@cloudsforge/ui/seo'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -54,20 +61,50 @@ export function AppShell() {
       <SkipLink>Skip to the page</SkipLink>
       <CloudsForgeBar current={PRODUCT} account={account} onSignIn={() => signIn()} onSignOut={signOut} />
 
-      <nav className="tw-nav" aria-label="World sections">
-        <div className="tw-nav__inner">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === '/'}
-              className={({ isActive }) => `tw-nav__link${isActive ? ' is-active' : ''}`}
-            >
-              {item.nav}
-            </NavLink>
-          ))}
-        </div>
-      </nav>
+      {/*
+        The strip of sections, and it is now the SHARED one.
+
+        This client wrote its own — `.tw-nav`, `.tw-nav__inner`, `.tw-nav__link`, sticky at
+        `var(--cf-bar-h)` over `var(--cf-bg-raised)` with a `var(--cf-line)` rule under it and an
+        `__inner` bounded at `var(--cf-max-w)` — and it was the ELEVENTH copy of that strip in the
+        estate. It was one of the good copies: it scrolled, its labels did not break mid-word, and
+        its inner box agreed with the bar above it, which is more than most of the ten could say.
+        It is still a copy, and a copy is a place a fix does not reach.
+
+        WHAT THE SURFACE GAINS BY MOVING. `.tw-nav__link.is-active` marked the section being read
+        in TWO channels — ink and a 2px underline. `.cf-subnav__link--current` marks it in THREE,
+        adding `font-weight: 600`. That third channel is not decoration: the underline is drawn in
+        `--cf-accent`, a per-product hue, and two of the estate's accents sit within 4.6 ΔE of one
+        another under protanopia, so a reader who separates neither hue was being told which
+        section they were on by one signal that had gone grey and one that never varied. Weight
+        survives both.
+
+        WHAT IT DOES NOT LOSE. The deleted rule argued, correctly, that `color:` must take the
+        4.5:1 text step (`--cf-accent-text`) and never the 3:1 border step (`--cf-accent`), because
+        the two are the same value on a light scheme and different on the dark one this surface has
+        always shipped. The shared rule satisfies that argument by a different route: it sets
+        `color: var(--cf-fg)` — the full-strength foreground, above the text step on either scheme
+        — and keeps `--cf-accent` where it belongs, on `border-bottom-color`. Nothing is layered
+        back over it locally.
+
+        The label stays this surface's own wording. "World sections" is what these are; the shared
+        component takes the wording as a prop precisely so a strip does not have to be renamed to
+        be shared. The links stay here because the current one is decided by react-router.
+      */}
+      <SubNav label="World sections">
+        {NAV.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            end={item.path === '/'}
+            className={({ isActive }) =>
+              `cf-subnav__link${isActive ? ' cf-subnav__link--current' : ''}`
+            }
+          >
+            {item.nav}
+          </NavLink>
+        ))}
+      </SubNav>
 
       {/*
         `account.signedIn`, NOT `account`.

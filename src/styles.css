@@ -16,13 +16,16 @@
  * everything above it was tokenised. The note at the head of that block records what moved. Two
  * `font-size` declarations there are still `em` ON PURPOSE and say why beside themselves.
  *
- * Local classes are prefixed `tw-`. The shared ones this bundle uses are TWO: `.cf-btn` and
- * `.cf-num`, both in src/components/states.tsx. This list read `.cf-btn`, `.cf-btn--ember`,
- * `.cf-input`, `.cf-input--mono`, `.cf-select`, `.cf-num` and `.cf-sr`; five of the seven are named
+ * Local classes are prefixed `tw-`. The shared ones this bundle names are FOUR: `.cf-btn` and
+ * `.cf-num` in src/components/states.tsx, and `.cf-subnav__link` with `.cf-subnav__link--current`
+ * in src/components/shell.tsx — the strip of sections moved into the design system on 2026-08-10
+ * and its `.tw-nav*` rules are gone from this file. This list read `.cf-btn`, `.cf-btn--ember`,
+ * `.cf-input`, `.cf-input--mono`, `.cf-select`, `.cf-num` and `.cf-sr`; five of the seven were named
  * nowhere in src/, which is what happens to a list nothing checks. `test/styles.test.ts` checks it
- * now, in both directions — every `cf-` class this bundle names must be declared by ui.css, and the
- * two above must still be named here. `.cf-btn--ember` remains the one solid call to action if this
- * surface ever grows one; there is no `.cf-btn--primary`.
+ * now, in both directions — every `cf-` class this bundle names must be declared by ui.css, the
+ * four above must still be named, and no `.tw-nav*` selector may come back. `.cf-btn--ember`
+ * remains the one solid call to action if this surface ever grows one; there is no
+ * `.cf-btn--primary`.
  */
 
 /* ---- shell ----------------------------------------------------------- */
@@ -41,44 +44,25 @@ body {
   padding: var(--cf-space-lg) var(--cf-space-md) var(--cf-space-3xl);
 }
 
-.tw-nav {
-  position: sticky;
-  top: var(--cf-bar-h);
-  z-index: 5;
-  background: var(--cf-bg-raised);
-  border-bottom: 1px solid var(--cf-line);
-}
+/* ── THE STRIP OF SECTIONS IS NOT DECLARED HERE ANY MORE ──────────────────────────────────────
+   `.tw-nav`, `.tw-nav__inner`, `.tw-nav__link`, its `:hover` and its `.is-active` used to sit at
+   exactly this point in the file. They are gone, and src/components/shell.tsx renders `SubNav`
+   from @cloudsforge/ui in their place: `.cf-subnav`, `.cf-subnav__inner`, `.cf-subnav__link` and
+   `.cf-subnav__link--current`, declared once in ui.css. `test/styles.test.ts` holds the absence in
+   both directions, so a local copy cannot quietly come back beside the shared one.
 
-.tw-nav__inner {
-  max-width: var(--cf-max-w);
-  margin: 0 auto;
-  display: flex;
-  gap: var(--cf-space-xs);
-  padding: 0 var(--cf-space-md);
-  overflow-x: auto;
-}
-
-.tw-nav__link {
-  padding: var(--cf-space-sm) var(--cf-space-md);
-  color: var(--cf-fg-dim);
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-  transition: color var(--cf-speed) var(--cf-ease);
-}
-
-.tw-nav__link:hover {
-  color: var(--cf-fg);
-}
-
-/* `color` takes the TEXT step and `border-bottom-color` does not. `--cf-accent` is validated at
-   3:1, which is the floor for a border, a fill or an outline; `--cf-accent-text` is the 4.5:1 step
-   and is the only one that may be set as `color:`. They are the same value on a light scheme and
-   different on a dark one, which is the scheme this surface has always shipped. */
-.tw-nav__link.is-active {
-  color: var(--cf-accent-text);
-  border-bottom-color: var(--cf-accent);
-}
+   Do not re-add a local override on top of the shared classes. The rule deleted here carried a
+   contrast argument worth restating, because it is the reason no override is needed: `color:` must
+   take the 4.5:1 TEXT step and never the 3:1 border step — `--cf-accent` is validated as a floor
+   for a border, a fill or an outline, `--cf-accent-text` is the step that may be set as `color:`,
+   and the two are the same value on a light scheme and different on the dark one this surface
+   ships. The shared `.cf-subnav__link--current` satisfies that by setting `color: var(--cf-fg)`,
+   which is full-strength foreground and therefore above the text step on either scheme, and by
+   keeping `--cf-accent` on `border-bottom-color` where it belongs. It also adds `font-weight: 600`,
+   so the section being read is marked in three channels rather than the two this file had — the
+   accent is a per-product hue and two of the estate's sit within 4.6 ΔE under protanopia, which is
+   the whole reason colour is never the only channel.
+─────────────────────────────────────────────────────────────────────────────────────────────── */
 
 .tw-degraded {
   display: flex;

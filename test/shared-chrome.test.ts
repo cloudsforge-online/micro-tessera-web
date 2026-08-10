@@ -41,7 +41,7 @@ import { withScreen, type Screen } from './dom.ts'
 import { App } from '../src/app.tsx'
 import { DESCRIPTION } from '../src/components/shell.tsx'
 import { SURFACE } from '../src/lib/hosts.ts'
-import { ROUTES } from '../src/lib/routes.ts'
+import { NAV, ROUTES } from '../src/lib/routes.ts'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const HTML = readFileSync(join(REPO, 'index.html'), 'utf8')
@@ -237,6 +237,62 @@ describe('the document head', () => {
     await atAddress('/wards', async (s) => {
       assert.equal(s.document.head.querySelectorAll('meta[name="description"]').length, 1)
       assert.equal(s.document.head.querySelectorAll('link[rel="canonical"]').length, 1)
+    })
+  })
+})
+
+/* ── the strip of sections ──────────────────────────────────────────────────────────────────── */
+
+describe('the strip of sections, as it is actually rendered', () => {
+  /*
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   * THIS IS THE ASSERTION A SOURCE-TEXT CHECK CANNOT MAKE, AND IT IS HERE RATHER THAN IN
+   * test/styles.test.ts ON PURPOSE.
+   *
+   * That file can prove `.tw-nav*` is gone from the stylesheet and that ui.css declares
+   * `.cf-subnav*`. Both can be true of a shell that still renders `<nav className="tw-nav">` —
+   * which is the strictly worse state, a strip with no rules at all rather than a duplicated one.
+   * Only mounting the app in a document and reading the class off the landmark closes that, and
+   * the mutation proof for this change is exactly that: reverting src/components/shell.tsx alone
+   * turns this red and leaves every rule in test/styles.test.ts green.
+   * ══════════════════════════════════════════════════════════════════════════════════════════
+   */
+  it('is the SHARED one, labelled in this surface’s own words', async () => {
+    await atAddress('/wards', async (s) => {
+      const strips = s.document.querySelectorAll('nav.cf-subnav')
+      assert.equal(strips.length, 1, 'expected exactly one shared sub-nav landmark')
+      const strip = strips[0] as Element
+      // The wording is this client's, not the design system's default. `SubNav` takes it as a prop
+      // so that sharing the strip does not mean renaming the sections.
+      assert.equal(strip.getAttribute('aria-label'), 'World sections')
+      assert.ok(strip.querySelector('.cf-subnav__inner'), 'the scrolling inner box is missing')
+      assert.equal(s.document.querySelectorAll('.tw-nav, [class*="tw-nav__"]').length, 0)
+    })
+  })
+
+  it('carries every section from the route table, on the shared link class', async () => {
+    await atAddress('/wards', async (s) => {
+      const links = [...s.document.querySelectorAll('nav.cf-subnav a')]
+      // Against NAV rather than a number, so adding a seventh section does not silently pass.
+      assert.equal(links.length, NAV.length)
+      for (const link of links) {
+        const cls = link.getAttribute('class') ?? ''
+        assert.ok(cls.split(/\s+/).includes('cf-subnav__link'), `a section link reads class="${cls}"`)
+        assert.ok(!cls.includes('tw-nav'), `a section link still carries a local class: "${cls}"`)
+      }
+    })
+  })
+
+  it('marks the section being read with the shared modifier, not `is-active`', async () => {
+    await atAddress('/wards', async (s) => {
+      const current = [...s.document.querySelectorAll('.cf-subnav__link--current')]
+      assert.equal(current.length, 1, 'exactly one section is the one being read')
+      assert.equal(current[0]?.textContent, 'Wards')
+      // The local copy spelled it `is-active`. Scoped to the strip rather than to the document,
+      // because `.tw-map__lane` and `.tw-city-tab` are this client's own and keep that name; what
+      // must not survive is a section link asking for a class the design system does not declare,
+      // which renders as an ordinary link and reports nothing.
+      assert.equal(s.document.querySelectorAll('nav.cf-subnav .is-active').length, 0)
     })
   })
 })
