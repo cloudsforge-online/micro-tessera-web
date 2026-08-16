@@ -1,6 +1,6 @@
 {
   "name": "@cloudsforge/tessera-web",
-  "version": "2026.8.67",
+  "version": "2026.8.68",
   "packageManager": "pnpm@11.9.0",
   "private": true,
   "description": "Tessera — the client for the fourth Forge Worlds title: a persistent user-made isometric world in a browser tab. The canvas renderer, the ward map, the Kiln, build-and-place, Workshop pages and the three-figure wallet strip.",
