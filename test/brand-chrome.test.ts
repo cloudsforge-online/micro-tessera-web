@@ -80,12 +80,23 @@ interface Shipped {
  * size a scraper rejects anything else for", so it was built to be this tag. The scene card is
  * marketing, and marketing is not this bundle's job. Recorded because it is a decision between two
  * correct-looking files, and the next reader will otherwise think the other one was overlooked.
+ *
+ * ── THE DIGESTS MOVED ONCE, ON 2026-08-17, AND THAT IS THE WHOLE POINT OF THEM ────────────────
+ *
+ * micro-tessera-assets promoted gpt-image-2 to the reference set (b4f276a, 2026-08-16), which
+ * regenerated all five of these. `public/` still held the FLUX cut, so this bundle was serving art
+ * the asset repository no longer publishes — a divergence with no visible symptom, since a favicon
+ * from the previous reference set looks like a favicon. The last test in this file is what said
+ * so, out of micro-org#478's cross-repo run. Both sides were then moved together: the bytes were
+ * re-copied from `assets/chrome/` and these pins re-read from MANIFEST.json. Re-pinning WITHOUT
+ * re-copying is the failure this file exists to prevent, and the reverse — copying without
+ * re-pinning — fails the first pin test rather than passing quietly.
  */
 const SHIPPED: readonly Shipped[] = [
   {
     file: 'favicon-32x32.png',
     source: 'assets/chrome/favicon-32-32x32.png',
-    sha256: '6dafb9aaef2bd5ec28d1601e54914885a95d64e7ca38caccdde53eb19df87269',
+    sha256: '260ddfd5a96d2d340a860db424d51951fab2fbbfedc5529235ea2e4a8a24951c',
     width: 32,
     height: 32,
     linked: true,
@@ -93,7 +104,7 @@ const SHIPPED: readonly Shipped[] = [
   {
     file: 'favicon-192x192.png',
     source: 'assets/chrome/favicon-192-192x192.png',
-    sha256: '63dab0a48e2533663991cbb81978455b222084111b6363c9bc7e45725d9d922f',
+    sha256: '4a7d24a2625927402fcc50aaee22aae567522ff336b4f5efcd797937d5177c31',
     width: 192,
     height: 192,
     linked: true,
@@ -101,7 +112,7 @@ const SHIPPED: readonly Shipped[] = [
   {
     file: 'favicon-512x512.png',
     source: 'assets/chrome/favicon-512-512x512.png',
-    sha256: 'a7f26930f63ce3c07de995741a1c026221e907d4fc346d42a15f09f61941c5a5',
+    sha256: 'f582fb6f65bc23cdcd4805a15b9f43cb335d2c9e39e396154748d3a7fc72ce14',
     width: 512,
     height: 512,
     linked: true,
@@ -112,7 +123,7 @@ const SHIPPED: readonly Shipped[] = [
     // title, so iOS is handed the size it actually asks for instead of resampling.
     file: 'apple-touch-icon-180x180.png',
     source: 'assets/chrome/apple-touch-180-180x180.png',
-    sha256: 'c5b9675d16b81cbd3cc76f7c3771fe39b2889346c5bbda9c5ed72097d37ef40b',
+    sha256: 'fa212d694e07287683bcb1b27eb7dd49fc8d105859b6fedf89571ac1098bcc38',
     width: 180,
     height: 180,
     linked: true,
@@ -120,7 +131,7 @@ const SHIPPED: readonly Shipped[] = [
   {
     file: 'og-1200x630.png',
     source: 'assets/chrome/og-title-1200x630.png',
-    sha256: 'b2bca265702da59d3f77aae293eb1b3afcee4a57083f34eccf1fbdd5c67e89ff',
+    sha256: 'e79474fb70ceaa14f4e94d641e2273c0874dbae84bf74e8561089dd94740c3cd',
     width: 1200,
     height: 630,
     linked: false,
