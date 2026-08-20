@@ -126,7 +126,17 @@
       property="og:description"
       content="A world people make. Claim ground for free, fire an object out of a prompt, open a place. A Forge Worlds title."
     />
-    <meta property="og:image" content="/og-1200x630.png" />
+    <!--
+      ── THE MOUNT IS IN THESE BY HAND, AND IT HAS TO BE ────────────────────────────────────────
+      vite rewrites `src` and `href` against `base`, and does NOT touch `content`. So a
+      root-relative `content="/og-1200x630.png"` stays root-relative through the build, and on the
+      apex that address belongs to micro-site — a link preview for this game would show the
+      COMPANY card rather than the game's, silently and only ever in someone else's chat client.
+      The bundle's own copy is at `/worlds/tessera/og-1200x630.png`, because the Dockerfile mounts
+      `dist` there. `mountAsset()` in @cloudsforge/ui does the same composition at runtime; this
+      is the copy a preview fetcher reads, and those generally do not execute JavaScript.
+    -->
+    <meta property="og:image" content="/worlds/tessera/og-1200x630.png" />
   </head>
   <body>
     <div id="root"></div>

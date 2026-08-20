@@ -59,9 +59,9 @@ import { LandPage } from '../src/pages/land.tsx'
 import { WardsPage } from '../src/pages/wards.tsx'
 import { WorkshopPage } from '../src/pages/workshop.tsx'
 import { WorldPage } from '../src/pages/world.tsx'
-import { ROUTES, routeFor } from '../src/lib/routes.ts'
+import { ROUTES, publicPath, routeFor } from '../src/lib/routes.ts'
 
-const ORIGIN = 'https://tessera.cloudsforge.online'
+const ORIGIN = 'https://cloudsforge.online/worlds/tessera'
 const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 const SESSION = { storage: { ...SIGNED_IN } } as const
 
@@ -1119,7 +1119,10 @@ describe('BJ-TESSERA — the surface', () => {
       const links = [...offered.querySelectorAll('a')]
       assert.deepEqual(
         links.map((a) => a.getAttribute('href')),
-        ROUTES.map((r) => r.path),
+        // The RENDERED href, which react-router composes from `basename` — so it carries the
+        // mount and `ROUTES[].path` does not. Comparing the two directly would assert that this
+        // surface's own links are broken.
+        ROUTES.map((r) => publicPath(r.path)),
         'the not-found screen does not offer exactly the routes this surface declares',
       )
       for (const route of ROUTES) {
@@ -1139,7 +1142,7 @@ describe('BJ-TESSERA — the surface', () => {
     const routesTest = readFileSync(at('test/routes.test.ts'), 'utf8')
     assert.match(
       routesTest,
-      /error_page 404 \\\/index\\\.html/,
+      /error_page 404 \\\/worlds\\\/tessera\\\/index\\\.html/,
       'the 404-status assertion this scenario delegates to is no longer in test/routes.test.ts',
     )
   })

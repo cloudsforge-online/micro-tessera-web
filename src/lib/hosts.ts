@@ -34,6 +34,7 @@
  */
 import { cloudsforgeHosts, type CloudsForgeHosts, type SurfaceKey } from '@cloudsforge/ui'
 import { viewedSurfaceUrl } from './viewed.ts'
+import { BASE } from './routes.ts'
 
 /**
  * The surface this application presents itself AS, for the product switcher.
@@ -119,7 +120,37 @@ export function hosts(): CloudsForgeHosts {
  * which is what makes reading the other network from this page possible. See `lib/viewed.ts`.
  */
 export function apiBase(): string {
-  return new URL(viewedSurfaceUrl(SURFACE)).origin
+  // ── THE WHOLE URL, NOT ITS ORIGIN — AND THAT CHANGED IN WAVE 3f ───────────────────────────
+  //
+  // `.origin` was right while this surface owned a hostname: the registry's URL WAS an origin and
+  // there was nothing after it to lose. This title is `<apex>/worlds/<name>` now, so `.origin`
+  // throws the mount away and every read goes to `<apex>/v1/…` — the APEX ROOT, which is
+  // micro-site's, and micro-site answers its SPA shell with a 200 and an HTML body.
+  //
+  // Not a network error a caller can branch on. A successful response that parses as nothing, on
+  // every request this bundle makes.
+  //
+  // `viewedSurfaceUrl()` already returns origin PLUS basePath and already follows the network the
+  // reader is viewing, so taking it whole is both the fix and the simpler expression. It carries
+  // no trailing slash — `publicPath('/')` is the mount itself — so callers appending `/v1/…`
+  // compose cleanly.
+  const url = viewedSurfaceUrl(SURFACE)
+  // ── EVERYWHERE BUT A DEV STACK, WHICH HAS NO GATEWAY TO STRIP THE MOUNT ───────────────────
+  //
+  // In production the registry's URL is origin PLUS `/worlds/<title>`, and the mount is exactly
+  // how the gateway finds this surface — take it whole. Under `pnpm dev` the same registry
+  // composes `http://localhost:<devPort>/worlds/<title>`, and there is no gateway in front of
+  // that port to take the prefix back off, so the service would answer 404 for every route.
+  //
+  // The origin alone is the dev answer, and that is the ONLY case where dropping the path is
+  // right — which is why this branches on the hostname rather than on a flag. A flag would be a
+  // build-time constant, and this repository has none by rule.
+  const parsed = new URL(url)
+  const local =
+    parsed.hostname === 'localhost' ||
+    parsed.hostname === '127.0.0.1' ||
+    parsed.hostname.endsWith('.local')
+  return local ? parsed.origin : url
 }
 
 /**
@@ -151,7 +182,11 @@ export function apiBase(): string {
  * ward costs, and no second certificate in the path of the thing the player is looking at.
  */
 export function assetBase(): string {
-  return `${pageOrigin()}/world-assets`
+  // THE MOUNT IS PART OF IT since wave 3f. Same-origin is still the point — this composes the
+  // page's own origin, never a hostname — but on the apex the origin alone is not enough: bare
+  // `/world-assets/` is micro-site's address and answers 404 for every sprite. nginx aliases the
+  // mounted path back onto the volume, so the bytes did not move; only the address did.
+  return `${pageOrigin()}${BASE}/world-assets`
 }
 
 /** The page origin, or a stable placeholder when there is no document (tests, prerender). */

@@ -72,8 +72,8 @@ test('on localhost the service resolves to the port it binds', () => {
 })
 
 test('on the apex the service resolves to its own subdomain', () => {
-  const base = at('https://tessera.cloudsforge.online/', apiBase)
-  assert.equal(base, 'https://tessera.cloudsforge.online')
+  const base = at('https://cloudsforge.online/worlds/tessera/', apiBase)
+  assert.equal(base, 'https://cloudsforge.online/worlds/tessera')
 })
 
 test('served from tessera.<apex>, sign-in addresses a hostname that exists', () => {
@@ -84,13 +84,13 @@ test('served from tessera.<apex>, sign-in addresses a hostname that exists', () 
   // resolves on the apex. Before the registry row these three were `nimbus.tessera.<apex>` and
   // friends — hostnames that do not exist, one of which is where every Sign in button leads.
   // ══════════════════════════════════════════════════════════════════════════════════════════
-  const resolved = at('https://tessera.cloudsforge.online/', hosts)
+  const resolved = at('https://cloudsforge.online/worlds/tessera/', hosts)
   assert.equal(resolved.nimbus, 'https://nimbus.cloudsforge.online')
   assert.equal(resolved.pay, 'https://pay.cloudsforge.online')
   assert.equal(resolved.lantern, 'https://lantern.cloudsforge.online')
 
   // And `hosts()` is now a passthrough, which is what "the workaround is gone" means mechanically.
-  assert.deepEqual(resolved, at('https://tessera.cloudsforge.online/', cloudsforgeHosts))
+  assert.deepEqual(resolved, at('https://cloudsforge.online/worlds/tessera/', cloudsforgeHosts))
 })
 
 test('every other environment resolves as the registry says, untouched', () => {
@@ -106,12 +106,12 @@ test('every other environment resolves as the registry says, untouched', () => {
 })
 
 test('sprites are same-origin, under a path with no provider in it', () => {
-  const base = at('https://tessera.cloudsforge.online/', assetBase)
-  assert.equal(base, 'https://tessera.cloudsforge.online/world-assets')
+  const base = at('https://cloudsforge.online/worlds/tessera/', assetBase)
+  assert.equal(base, 'https://cloudsforge.online/worlds/tessera/world-assets')
   assert.doesNotMatch(base, /candidates/, 'the asset base names a provider')
   // Same origin as the page, so several hundred sprite requests take no CORS preflight.
   assert.ok(
-    base.startsWith(at('https://tessera.cloudsforge.online/', pageOrigin)),
+    base.startsWith(at('https://cloudsforge.online/worlds/tessera/', pageOrigin)),
     'sprites are not same-origin with the page',
   )
 })

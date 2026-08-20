@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
-import { DEEP_LINK_PATH, NON_INDEX_PATHS, NAV, ROUTES, routeFor } from '../src/lib/routes.ts'
+import { BASE, DEEP_LINK_PATH, NAV, NON_INDEX_PATHS, ROUTES, routeFor } from '../src/lib/routes.ts'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (name: string): string => readFileSync(join(REPO, name), 'utf8')
@@ -43,7 +43,10 @@ const directives = (): string =>
 
 test('nginx enumerates exactly the non-index routes', () => {
   const conf = directives()
-  const block = /location ~ \^\/\(([^)]+)\)\/\?\$/.exec(conf)
+  // The enumerated block is mounted since wave 3f — `^/worlds/tessera/(wards|land|…)/?$`. The
+  // capture inside it is still the ROUTER paths, which is what NON_INDEX_PATHS holds, so only the
+  // prefix in front of the group moves.
+  const block = new RegExp(`location ~ \\^${BASE}/\\(([^)]+)\\)/\\?\\$`).exec(conf)
   assert.ok(block, 'nginx.conf has no enumerated route block')
   const listed = (block[1] ?? '').split('|').sort()
   assert.deepEqual(
@@ -66,7 +69,7 @@ test('nginx never falls back with try_files $uri /index.html', () => {
     /try_files\s+\$uri\s+\/index\.html/,
     'nginx.conf falls back to index.html for unknown addresses, which answers 200 for everything',
   )
-  assert.match(conf, /error_page 404 \/index\.html/, 'nginx.conf has no 404 error page')
+  assert.match(conf, /error_page 404 \/worlds\/tessera\/index\.html/, 'nginx.conf has no 404 error page')
 })
 
 test('the route regex anchors on /?$ and is not a prefix', () => {
@@ -169,8 +172,11 @@ test('CI names the app micro-deploy builds, and calls the estate workflow rather
 
 test('/world-assets is served without a fallback, so a missing sprite 404s', () => {
   const conf = directives()
-  const block = /location \/world-assets\/ \{([\s\S]*?)\n {4}\}/.exec(conf)
-  assert.ok(block, 'nginx serves no /world-assets/ location')
+  // MOUNTED since wave 3f: `/world-assets/` at the apex root is micro-site's address and would
+  // never reach this container, so the URL carries the mount and nginx `alias`es it back onto the
+  // volume — the bytes did not move, only the address did.
+  const block = new RegExp(`location ${BASE}/world-assets/ \\{([\\s\\S]*?)\\n {4}\\}`).exec(conf)
+  assert.ok(block, `nginx serves no ${BASE}/world-assets/ location`)
   // A sprite request answered with index.html decodes as a corrupt PNG rather than as a 404, and
   // the client would report a decode failure for a file that simply is not there.
   assert.match(block[1] ?? '', /try_files \$uri =404/, '/world-assets/ falls back to the app shell')

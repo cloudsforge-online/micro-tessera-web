@@ -47,7 +47,7 @@ import { NAV, ROUTES } from '../src/lib/routes.ts'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const HTML = readFileSync(join(REPO, 'index.html'), 'utf8')
-const ORIGIN = 'https://tessera.cloudsforge.online'
+const ORIGIN = 'https://cloudsforge.online/worlds/tessera'
 
 /** The measurement ID this surface ships, read off the shell rather than restated. */
 const ANALYTICS_ID = (/name="cf-analytics" content="([^"]+)"/.exec(HTML)?.[1] ?? '') as string

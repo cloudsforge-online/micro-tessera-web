@@ -44,7 +44,7 @@ function removeWindow(): void {
 }
 
 /** A real address on this surface, on the mainnet estate. */
-const PAGE = 'https://tessera.cloudsforge.online/'
+const PAGE = 'https://cloudsforge.online/worlds/tessera/'
 /** A development address: no sibling estate exists, so nothing here can point anywhere. */
 const DEV = 'http://localhost:5173/'
 
@@ -64,7 +64,7 @@ describe('the in-place network view', () => {
   it('starts on the network the hostname names, and says so', () => {
     at(PAGE, () => {
       assert.equal(viewedNetwork(), 'mainnet')
-      assert.equal(apiBase(), 'https://tessera.cloudsforge.online')
+      assert.equal(apiBase(), 'https://cloudsforge.online/worlds/tessera')
     })
   })
 
@@ -75,7 +75,11 @@ describe('the in-place network view', () => {
       // `-testnet` on the API host, not a different path and not a different product. The web
       // hostname is retired and 302s to its mainnet sibling; `/v1` on it is exempt and still
       // answers from the testnet service, which is what makes this readable at all.
-      assert.equal(apiBase(), 'https://tessera-testnet.cloudsforge.online')
+      assert.equal(apiBase(), // The testnet apex plus the SAME mount — both estates serve this game from one path, and
+      // switching network changes only which apex is in front of it. Which estate (viewed.ts) and
+      // where under it (routes.ts BASE) are separate questions; conflating them broke agora's
+      // switcher in wave 3c.
+      'https://testnet.cloudsforge.online/worlds/tessera')
     })
   })
 
@@ -84,7 +88,7 @@ describe('the in-place network view', () => {
       setViewedNetwork('testnet')
       setViewedNetwork('mainnet')
       assert.equal(viewedNetwork(), 'mainnet')
-      assert.equal(apiBase(), 'https://tessera.cloudsforge.online')
+      assert.equal(apiBase(), 'https://cloudsforge.online/worlds/tessera')
     })
   })
 
