@@ -178,7 +178,7 @@ test('BJ-TES-20 ★ [T1/client-request] discovery sends no ordering parameter, a
     const calls = s.api.matching('GET /v1/discover')
     assert.ok(calls.length > 0, 'the feed was never read')
     for (const call of calls) {
-      const params = [...new URL(call.url, 'https://tessera.cloudsforge.online').searchParams.keys()]
+      const params = [...new URL(call.url, 'https://cloudsforge.online/worlds/tessera').searchParams.keys()]
       assert.deepEqual(
         params.filter((p) => p !== 'wardId'),
         [],
@@ -450,7 +450,7 @@ test('BJ-TES-29 [T1/client-request] the wallet strip reads the balance route, an
     const calls = s.api.matching('GET /v1/me/balances')
     assert.equal(calls.length, 1, 'the balances were not read exactly once')
     const params = [
-      ...new URL(calls[0]?.url ?? '', 'https://tessera.cloudsforge.online').searchParams.keys(),
+      ...new URL(calls[0]?.url ?? '', 'https://cloudsforge.online/worlds/tessera').searchParams.keys(),
     ]
     assert.deepEqual(params, [], `the strip asked for balances with ${params.join(', ')}`)
     s.clean('the wallet strip, read')

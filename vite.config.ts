@@ -12,6 +12,10 @@ import { defineConfig } from 'vite'
  * `import.meta.env.VITE_` ever reappears.
  */
 export default defineConfig({
+  // WHERE ON ANY ORIGIN this bundle lives. Not an environment — the same string everywhere — but a
+  // build-time constant regardless, because it goes in front of every hashed asset name in the
+  // emitted `index.html`. The trailing slash is required by vite.
+  base: '/worlds/tessera/',
   plugins: [react()],
   resolve: {
     // @cloudsforge/ui is a `link:` dependency, so its own node_modules holds a second copy of

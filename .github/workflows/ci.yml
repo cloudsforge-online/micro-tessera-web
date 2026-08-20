@@ -70,6 +70,21 @@ jobs:
       # micro-tessera-web; the app is tessera-web.
       app: tessera-web
 
+      # ── WHERE THIS BUNDLE LIVES INSIDE ITS OWN CONTAINER ─────────────────────────────────────
+      #
+      # `/worlds/tessera`, wave 3f of the apex consolidation — a title is a folder UNDER the catalogue
+      # rather than a product beside it. Without this the shared workflow probes `/`, which a
+      # mounted image 404s CORRECTLY: the readiness loop would spin for twenty seconds and then
+      # report a perfectly healthy container as a dead one.
+      #
+      # `deep-link-path` stays a ROUTER path and is prefixed with this — the same separation
+      # `src/lib/routes.ts` draws between a router path and a public one. Writing the mount into
+      # both would probe `/worlds/tessera/worlds/tessera/…`.
+      #
+      # Declaring it also turns on two probes that exist only for a folder, and both assert a 404:
+      # `/` and `/robots.txt` must be EMPTY here. An image built for `/worlds/tessera` but copied to the
+      # document root would answer 200 on `/` and shadow the marketing site the moment it deployed.
+      base-path: '/worlds/tessera'
       # ══════════════════════════════════════════════════════════════════════════════════════════
       # `/discover`, AND THE VALUE CAME FROM src/lib/routes.ts RATHER THAN FROM A SENTENCE.
       #

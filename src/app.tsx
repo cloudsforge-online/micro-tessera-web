@@ -20,10 +20,11 @@ import { NotFoundPage } from './pages/not-found.tsx'
 import { WardsPage } from './pages/wards.tsx'
 import { WorkshopPage } from './pages/workshop.tsx'
 import { WorldPage } from './pages/world.tsx'
+import { BASE } from './lib/routes.ts'
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASE}>
       <ScrollToTop />
       <AuthProvider>
         <Routes>

@@ -45,6 +45,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, type TestContext } from 'node:test'
+import { BASE } from '../src/lib/routes.ts'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PUBLIC = join(REPO, 'public')
@@ -223,7 +224,11 @@ test('index.html links every icon it ships, and ships every icon it links', () =
   const hrefs = [...HTML.matchAll(/href="\/([^"]+)"/g)].map((m) => m[1] as string)
   assert.ok(hrefs.length >= 4, `index.html declares only ${hrefs.length} root-relative hrefs`)
   for (const href of hrefs) {
-    assert.ok(existsSync(join(PUBLIC, href)), `index.html links /${href}, which is not in public/`)
+    // Same mount-comes-off-before-the-disk rule as the og:image below — vite DOES rewrite `href`
+    // against `base`, so these are already mounted in the built artefact even where the source
+    // says otherwise, and public/ is the unmounted tree either way.
+    const rel = `/${href}`.startsWith(`${BASE}/`) ? `/${href}`.slice(BASE.length + 1) : href
+    assert.ok(existsSync(join(PUBLIC, rel)), `index.html links /${href}, which is not in public/`)
   }
 })
 
@@ -232,7 +237,18 @@ test('index.html declares an og:image, and it is a file that ships', () => {
   assert.ok(og, 'index.html declares no og:image, so a shared link renders as a bare URL')
   // Relative on purpose: one bundle serves localhost, preview and the apex, and this file names no
   // hostname. A crawler resolves it against the page it fetched.
-  assert.ok(existsSync(join(PUBLIC, og[1] as string)), `og:image is /${og[1]}, not in public/`)
+  //
+  // ── BUT IT CARRIES THE MOUNT, AND public/ DOES NOT ────────────────────────────────────────────
+  //
+  // vite rewrites `src` and `href` against `base` and does NOT touch `content`, so a bare
+  // `/og-1200x630.png` would survive the build and resolve to MICRO-SITE's card on the apex — a
+  // shared link to this game showing the company's picture, silently, only ever in someone else's
+  // chat client. index.html therefore names `<BASE>/og-1200x630.png` by hand. The file itself
+  // lives at `public/og-1200x630.png`: the folder is made by the Dockerfile's COPY, not by this
+  // tree, so the mount comes back off before the address is checked against disk.
+  const declared = `/${og[1] as string}`
+  const onDisk = declared.startsWith(`${BASE}/`) ? declared.slice(BASE.length + 1) : (og[1] as string)
+  assert.ok(existsSync(join(PUBLIC, onDisk)), `og:image is ${declared}, not in public/ (looked for ${onDisk})`)
 })
 
 test('the Dockerfile copies public/, so the icons reach the artefact and not only the repo', () => {

@@ -55,6 +55,7 @@
 import assert from 'node:assert/strict'
 import { Window } from 'happy-dom'
 import type { ReactElement } from 'react'
+import { BASE } from '../src/lib/routes.ts'
 
 /* ── the globals a React tree touches ───────────────────────────────────────────────────────── */
 
@@ -437,7 +438,7 @@ function tabbablesIn(doc: Document): Element[] {
 }
 
 export async function mount(element: ReactElement, options: MountOptions = {}): Promise<Screen> {
-  const url = options.url ?? 'https://tessera.cloudsforge.online/'
+  const url = options.url ?? 'https://cloudsforge.online/worlds/tessera/'
   const win = new Window({ url })
   const doc = win.document as unknown as Document
 
@@ -570,10 +571,23 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
         json = undefined
       }
     }
+    // ── `path` IS WHAT micro-tessera SEES, NOT WHAT THE BROWSER TYPED ──────────────────────────
+    //
+    // Since the nesting the client calls `https://<apex>/worlds/tessera/v1/parcels`, and the
+    // gateway routes that with `stripPrefix` — so the request that reaches the service is
+    // `/v1/parcels`, exactly as it was before the move. This harness stands in for the gateway,
+    // so it strips too: a scenario's routes and its `wire[0].path` assertions are claims about
+    // what the SERVICE was asked, and none of them should have had to change for a mount.
+    //
+    // `url` above keeps the whole address, so a test that wants to prove the mount IS on the wire
+    // still can — `test/hosts.test.ts` does exactly that.
+    const seenByService = parsed.pathname.startsWith(`${BASE}/`)
+      ? parsed.pathname.slice(BASE.length)
+      : parsed.pathname
     const call: Wire = {
       method,
       url: raw,
-      path: `${parsed.pathname}${parsed.search}`,
+      path: `${seenByService}${parsed.search}`,
       headers,
       body,
       json,
